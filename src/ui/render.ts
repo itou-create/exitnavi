@@ -522,6 +522,25 @@ function guide(s: AppState, h: Handlers): HTMLElement {
   w.appendChild(text('p', 'hint',
     'この案内は暫定データから生成しています。実際の構内では現地の案内板を優先してください。現在地の測位はしていません。'))
 
+  // 実地フィードバック。「違った」の報告がそのままデータ修正になる仕組み
+  if (s.station && s.origin && best) {
+    const title = `[実地報告] ${s.station.name} ${s.origin.line} → ${best.exit.name}（ステップ${s.guideIndex + 1}/${total}）`
+    const body = [
+      '## 表示されていた案内',
+      `- 指示: ${step.instruction}`,
+      `- 方向: ${step.direction ?? '（表示なし）'}`,
+      step.detail ? `- 補足: ${step.detail}` : '',
+      '',
+      '## 実際はどうだったか（ここに書いてください）',
+      '- ',
+      '',
+      '## 修正対象データ（開発用メモ）',
+      `- stations.ts の leg: platformId=${s.origin.id}, exitId=${best.exit.id}`,
+    ].filter((l) => l !== '').join('\n')
+    w.appendChild(linkButton('実際と違っていたら報告する',
+      `https://github.com/itou-create/exitnavi/issues/new?title=${encodeURIComponent(title)}&body=${encodeURIComponent(body)}`))
+  }
+
   if (!last) {
     w.appendChild(button('primary', 'できた — 次へ', () => h.onGuideStep(1)))
   } else {
