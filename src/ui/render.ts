@@ -347,7 +347,8 @@ function result(s: AppState, h: Handlers): HTMLElement {
     const fp = floorPlan(s.station.id, best.exit.id)
     if (fp) {
       w.appendChild(fp)
-      w.appendChild(text('p', 'dgcap', '公式構内図の事実情報を基にアプリが独自作成した簡略図です（未実地確認・暫定）。'))
+      w.appendChild(text('p', 'dgcap',
+        '駅の立体図（公式構内図の事実情報を基に独自作成・未実地確認）。緑の線がホームから出口までの経路です。'))
     }
     w.appendChild(stationMap(s.station, best.exit, s.destination))
     w.appendChild(text('p', 'dgcap',
@@ -483,11 +484,12 @@ function guide(s: AppState, h: Handlers): HTMLElement {
       w.appendChild(text('p', 'dgcap', 'ホームの模式図です。縮尺はありません。あなたの現在位置は測っていないため描いていません。'))
     }
   } else if (s.station && best) {
-    // 改札〜構内は独自作成の構内図（あれば）、地上に出るステップは実地図
-    const fp = step.kind !== 'exit' ? floorPlan(s.station.id, best.exit.id) : null
+    // 改札〜構内は立体図（あれば）で現在の区間を強調、地上に出るステップは実地図
+    const fp = step.kind !== 'exit' ? floorPlan(s.station.id, best.exit.id, step.kind) : null
     if (fp) {
       w.appendChild(fp)
-      w.appendChild(text('p', 'dgcap', '公式構内図の事実情報を基にアプリが独自作成した簡略図です（未実地確認・暫定）。'))
+      w.appendChild(text('p', 'dgcap',
+        '駅の立体図。太く光っている区間がこのステップで進むところです（測位ではなく「次へ」に連動）。'))
     } else {
       w.appendChild(stationMap(s.station, best.exit, step.kind === 'exit' ? s.destination : null))
       w.appendChild(text('p', 'dgcap', '実際の地図（国土地理院 地理院タイル）。現在位置は表示していません。'))

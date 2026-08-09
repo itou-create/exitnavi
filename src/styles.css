@@ -169,6 +169,14 @@ a.btn{text-decoration:none}
 .mp-attr{font-size:14px;fill:#333;stroke:none}
 @media (prefers-color-scheme: dark){ .mapdg image{filter:brightness(.88) saturate(.9)} }
 
+/* 立体図（アイソメトリック断面） */
+.iso-ground{fill:rgba(0,180,120,.08);stroke:var(--line);stroke-width:2}
+.iso-floor{fill:var(--card);stroke:var(--line);stroke-width:2}
+.iso-vert{stroke:var(--ink3);stroke-width:2;stroke-dasharray:4 5}
+.iso-route{stroke:var(--go);stroke-width:6;fill:none;stroke-linecap:round}
+.iso-route-dim{opacity:.22}
+.iso-route-now{stroke-width:9;filter:drop-shadow(0 0 4px rgba(0,180,120,.6))}
+
 /* 独自作成の構内図 */
 .fp-title{font-size:20px;font-weight:800;fill:var(--ink)}
 .fp-label{font-size:18px;font-weight:800;fill:var(--ink)}
