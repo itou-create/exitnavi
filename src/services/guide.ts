@@ -1,4 +1,4 @@
-import type { ExitCandidate, GuidanceStep, Platform, Station } from '../types'
+import type { ArrivedTrain, BoardedPosition, ExitCandidate, GuidanceStep, Platform, Station } from '../types'
 import { fmtMin } from './exitPicker'
 
 /**
@@ -21,35 +21,123 @@ import { fmtMin } from './exitPicker'
  *   ノード列）を経路探索した結果がそのままこのステップ列になる。
  */
 
+export interface GuideOptions {
+  /** 起点が推定由来のときの列車。走り去った方向の計算に使う */
+  train?: ArrivedTrain | null
+  /** 乗車位置（進行方向基準）。ユーザーの1タップ申告 */
+  boardedPosition?: BoardedPosition | null
+}
+
+/**
+ * 列車が走り去る側のホーム端（a/b）。
+ * 行先とホームの directionEnds データから引く。データが無ければ null。
+ */
+export function travelEndOf(train: ArrivedTrain | null | undefined, platform: Platform): 'a' | 'b' | null {
+  if (!train || !platform.directionEnds) return null
+  const last = train.destination.split('.').pop() ?? ''
+  return platform.directionEnds[last] ?? null
+}
+
+/** 降車直後の個別化案内が可能か（askBoarded 画面を出すかの判定） */
+export function canPersonalizeOrient(
+  station: Station,
+  origin: Platform,
+  candidate: ExitCandidate | undefined,
+  train: ArrivedTrain | null | undefined,
+): boolean {
+  if (!candidate) return false
+  const leg = station.legs.find((l) => l.platformId === origin.id && l.exitId === candidate.exit.id)
+  return !!leg && leg.stairsPositionRatio != null && travelEndOf(train, origin) != null
+}
+
+/**
+ * 降車直後の一歩目を、利用者が観察できる言葉で作る。
+ *
+ * 利用者が確実に知っているのは「自分が電車のどのあたりに乗っていたか」、
+ * 観察できるのは「電車がどっちへ走り去ったか」だけ。この2つと
+ * 階段のホーム上の位置から、「走り去った方向へ／と逆へ」を言い切る。
+ * 現在地の測位はしない。
+ */
+function personalizedOrient(
+  origin: Platform,
+  leg: { stairsPositionRatio?: number; gateName: string },
+  travelEnd: 'a' | 'b',
+  boarded: BoardedPosition,
+): GuidanceStep {
+  const stairs = leg.stairsPositionRatio ?? 0.5
+  // 進行方向の先頭は「走り去る側の端」に近い
+  const offsets: Record<BoardedPosition, number> = { front: 0.15, middle: 0.5, rear: 0.85 }
+  const userRatio = travelEnd === 'a' ? offsets[boarded] : 1 - offsets[boarded]
+
+  const delta = stairs - userRatio
+  const dist = Math.abs(delta)
+
+  if (dist < 0.15) {
+    return {
+      kind: 'orient',
+      instruction: '降りた場所のすぐ近くに階段があります',
+      detail: '周りを見回して階段を探してください（暫定データ）',
+      signpostedAs: leg.gateName,
+    }
+  }
+
+  const walkTowardEnd: 'a' | 'b' = delta < 0 ? 'a' : 'b'
+  const sameAsTravel = walkTowardEnd === travelEnd
+  const howFar = dist >= 0.5 ? 'ホームをしばらく歩きます' : '少し歩きます'
+
+  return {
+    kind: 'orient',
+    direction: sameAsTravel ? 'straight' : 'u-turn',
+    directionBase: '「電車が走り去った方向」が基準です',
+    instruction: sameAsTravel
+      ? '電車が走り去った方向へ進む'
+      : '電車が走り去った方向と逆へ進む',
+    detail: `${howFar}。階段は${stairsPositionLabel(leg.stairsPositionRatio, origin)}（暫定データ）`,
+    signpostedAs: leg.gateName,
+  }
+}
+
 export function buildGuideSteps(
   station: Station,
   origin: Platform,
   candidate: ExitCandidate,
+  opts: GuideOptions = {},
 ): GuidanceStep[] {
   const leg = station.legs.find(
     (l) => l.platformId === origin.id && l.exitId === candidate.exit.id,
   )
   if (!leg) return []
 
-  // 手書きステップがあれば最優先
-  if (leg.steps && leg.steps.length > 0) return leg.steps
+  // 降車直後の個別化（乗車位置 × 走り去った方向）ができるなら最優先で使う
+  const travelEnd = travelEndOf(opts.train, origin)
+  const personal =
+    travelEnd && opts.boardedPosition && leg.stairsPositionRatio != null
+      ? personalizedOrient(origin, leg, travelEnd, opts.boardedPosition)
+      : null
+
+  // 手書きステップがあれば最優先（個別化できた場合は orient だけ差し替える）
+  if (leg.steps && leg.steps.length > 0) {
+    if (personal) return [personal, ...leg.steps.filter((s) => s.kind !== 'orient')]
+    return leg.steps
+  }
 
   // --- 汎用ステップの自動生成 ---
   const steps: GuidanceStep[] = []
 
-  // 0) 降車直後。まず「どっちへ歩くか」を決めさせる。
-  //    乗っていた車両位置は測れないので、階段のホーム上の位置だけを示す。
+  // 0) 降車直後。個別化できなければ、階段のホーム上の位置だけを示す。
   const hasStairsPos = leg.stairsPositionRatio != null
-  steps.push({
-    kind: 'orient',
-    instruction: hasStairsPos
-      ? `電車を降りたら、${stairsPositionLabel(leg.stairsPositionRatio, origin)}の階段へ`
-      : `電車を降りたら、「${leg.gateName}」の案内表示を探す`,
-    signpostedAs: leg.gateName,
-    detail: hasStairsPos
-      ? 'ホームの図で階段の位置を確認してください（暫定データ）'
-      : '階段の位置は未実測のため、ホーム上の吊り下げ案内に従ってください',
-  })
+  steps.push(
+    personal ?? {
+      kind: 'orient',
+      instruction: hasStairsPos
+        ? `電車を降りたら、${stairsPositionLabel(leg.stairsPositionRatio, origin)}の階段へ`
+        : `電車を降りたら、「${leg.gateName}」の案内表示を探す`,
+      signpostedAs: leg.gateName,
+      detail: hasStairsPos
+        ? 'ホームの図で階段の位置を確認してください（暫定データ）'
+        : '階段の位置は未実測のため、ホーム上の吊り下げ案内に従ってください',
+    },
+  )
 
   // 1) 階の移動。ホームの階層から方向を決める
   if (origin.levelIndex < 0) {

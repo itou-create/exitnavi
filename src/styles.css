@@ -137,18 +137,21 @@ a.btn{text-decoration:none}
 /* 図面（模式図） */
 .diagram{width:100%;height:auto;display:block;background:var(--bg);border-radius:11px;margin:12px 0 0}
 .dgcap{font-size:10.5px;color:var(--ink3);margin:5px 2px 0;line-height:1.5}
-.dg-train{fill:none;stroke:var(--ink3);stroke-width:1.4;stroke-dasharray:5 4}
-.dg-plat{fill:var(--card);stroke:var(--line);stroke-width:1.4}
-.dg-label{font-size:10px;font-weight:700;fill:var(--ink2)}
-.dg-label-strong{font-size:11px;font-weight:800;fill:var(--ink)}
-.dg-small{font-size:9px;fill:var(--ink3)}
+.dg-halo{stroke:var(--bg);stroke-width:3;paint-order:stroke;stroke-linejoin:round}
+.dg-body{fill:rgba(11,98,214,.07);stroke:var(--line);stroke-width:1.2}
+.dg-train{fill:none;stroke:var(--ink3);stroke-width:1.6;stroke-dasharray:6 4}
+.dg-plat{fill:var(--card);stroke:var(--line);stroke-width:1.6}
+.dg-label{font-size:11px;font-weight:700;fill:var(--ink2)}
+.dg-label-strong{font-size:12px;font-weight:800;fill:var(--ink)}
+.dg-small{font-size:10px;fill:var(--ink3)}
 .dg-stairs{fill:var(--brand)}
 .dg-stairs-unknown{fill:var(--ink3)}
-.dg-stairstext{font-size:9.5px;font-weight:800;fill:#fff}
-.dg-exit{fill:var(--ink3);opacity:.5}
+.dg-stairstext{font-size:10.5px;font-weight:800;fill:#fff;stroke:none}
+.dg-exit{fill:var(--ink3);opacity:.45}
 .dg-exit-target{fill:var(--go)}
-.dg-route{stroke:var(--go);stroke-width:2.5;stroke-dasharray:2 3}
-.dg-dest{stroke:var(--brand);stroke-width:2;stroke-dasharray:5 4}
+.dg-route{stroke:var(--go);stroke-width:4}
+.dg-route-head{fill:var(--go)}
+.dg-dest{stroke:var(--brand);stroke-width:2.5;stroke-dasharray:6 4}
 .dg-dest-head{fill:var(--brand)}
 .dg-center{fill:var(--brand)}
 

@@ -49,6 +49,13 @@ export interface Platform {
    * 現地の乗車位置案内と同じ言葉にすること。
    */
   platformEnds?: { a: string; b: string }
+  /**
+   * 行先 → 列車が走り去る側の端。
+   * キーは odpt の行先駅IDの末尾（例: 'Omiya'）。
+   * 「電車が走り去った方向へ／と逆へ」という、降りた人が実際に観察できる
+   * 言葉で案内するために使う（利用者目線の降車直後案内の要）。
+   */
+  directionEnds?: Record<string, 'a' | 'b'>
 }
 
 /** 駅の出入口（GTFS stops.txt の location_type = 2） */
@@ -137,8 +144,10 @@ export interface GuidanceStep {
   kind: GuidanceStepKind
   /** 大きく出す指示（例: 「中央改札を出る」） */
   instruction: string
-  /** 進む方向（直前の動作を終えた向き基準）。無ければ方向データ未整備 */
+  /** 進む方向（direction の基準は directionBase、省略時は「直前の動作を終えた向き」） */
   direction?: GuidanceDirection
+  /** direction の基準の説明を差し替える（例: 「電車が走り去った方向」が基準です） */
+  directionBase?: string
   /** 歩く距離の目安（m）。無ければ未整備 */
   distanceMeters?: number
   /** 現地の案内板の表記（signposted_as）。答え合わせ（確認）用 */
@@ -242,8 +251,12 @@ export type ScreenId =
   | 'pickOrigin'    // 路線の選び直し
   | 'pickDest'      // 目的地の選択
   | 'result'        // 出口の算出結果
+  | 'askBoarded'    // 「どのあたりに乗っていましたか？」（降車直後案内の個別化）
   | 'guide'         // 改札から出口までのステップ案内（第2段階）
   | 'error'
+
+/** 乗車位置（進行方向基準）。降りた本人が確実に知っている唯一の位置情報 */
+export type BoardedPosition = 'front' | 'middle' | 'rear'
 
 /** アプリ全体の状態 */
 export interface AppState {
@@ -258,6 +271,10 @@ export interface AppState {
   guesses: OriginGuess[]
   origin: Platform | null
   originSource: OriginSource | null
+  /** 起点が推定由来のとき、その列車。走り去った方向の計算に使う */
+  originTrain: ArrivedTrain | null
+  /** 乗車位置（進行方向基準）。ユーザーの1タップ申告 */
+  boardedPosition: BoardedPosition | null
   destination: Destination | null
   candidates: ExitCandidate[]
   /** ステップ案内（第2段階）。案内中でなければ空配列 */

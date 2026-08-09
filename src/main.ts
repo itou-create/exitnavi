@@ -1,11 +1,11 @@
 import './styles.css'
-import type { Destination, OriginGuess, Platform, Station } from './types'
+import type { BoardedPosition, Destination, OriginGuess, Platform, Station } from './types'
 import { getState, resetState, setState, subscribe } from './state'
 import { render, type Handlers } from './ui/render'
 import { getCurrentFix, isOutdoor, nearestStations } from './services/geo'
 import { guessOrigin, isGuessUsable } from './services/originGuess'
 import { rankExits } from './services/exitPicker'
-import { buildGuideSteps } from './services/guide'
+import { buildGuideSteps, canPersonalizeOrient } from './services/guide'
 import { IKEBUKURO, STATIONS } from './data/stations'
 import { setDemoMode, usingMock } from './services/odpt'
 
@@ -30,14 +30,20 @@ const handlers: Handlers = {
     void proceedWithStation(IKEBUKURO)
   },
   onAcceptGuess(guess: OriginGuess) {
-    // 推定をユーザーが承認した = originSource は 'guessed'
-    setState({ origin: guess.platform, originSource: 'guessed', screen: 'pickDest' })
+    // 推定をユーザーが承認した = originSource は 'guessed'。
+    // 列車を覚えておく（走り去った方向の計算に使う）
+    setState({
+      origin: guess.platform,
+      originSource: 'guessed',
+      originTrain: guess.train ?? null,
+      screen: 'pickDest',
+    })
   },
   onOpenManualPick() {
     setState({ screen: 'pickOrigin' })
   },
   onPickPlatform(platform: Platform) {
-    setState({ origin: platform, originSource: 'manual', screen: 'pickDest' })
+    setState({ origin: platform, originSource: 'manual', originTrain: null, screen: 'pickDest' })
   },
   onPickDestination(destination: Destination) {
     const s = getState()
@@ -49,16 +55,19 @@ const handlers: Handlers = {
     })
   },
   onStartGuide() {
-    // 最上位候補の出口への案内を開始する
+    // 最上位候補の出口への案内を開始する。
+    // 降車直後の個別化（乗車位置×走り去った方向）ができるなら、まず乗車位置を聞く
     const s = getState()
     const best = s.candidates[0]
     if (!s.station || !s.origin || !best) return
-    setState({
-      guideSteps: buildGuideSteps(s.station, s.origin, best),
-      guideIndex: 0,
-      guideArrivalNote: null,
-      screen: 'guide',
-    })
+    if (canPersonalizeOrient(s.station, s.origin, best, s.originTrain)) {
+      setState({ screen: 'askBoarded' })
+      return
+    }
+    startGuideWith(null)
+  },
+  onPickBoarded(pos: BoardedPosition | null) {
+    startGuideWith(pos)
   },
   onGuideStep(delta: number) {
     const s = getState()
@@ -127,6 +136,23 @@ async function start(): Promise<void> {
       locateNote: `位置情報を取得できませんでした（${e instanceof Error ? e.message : String(e)}）。いる駅を選んでください。`,
     })
   }
+}
+
+/** 乗車位置（null = わからない）を受けてステップ案内を開始する */
+function startGuideWith(pos: BoardedPosition | null): void {
+  const s = getState()
+  const best = s.candidates[0]
+  if (!s.station || !s.origin || !best) return
+  setState({
+    boardedPosition: pos,
+    guideSteps: buildGuideSteps(s.station, s.origin, best, {
+      train: s.originTrain,
+      boardedPosition: pos,
+    }),
+    guideIndex: 0,
+    guideArrivalNote: null,
+    screen: 'guide',
+  })
 }
 
 /** 駅が確定してから先の共通フロー（自動判定でも手動選択でも同じ） */

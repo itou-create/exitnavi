@@ -138,6 +138,7 @@ Google Places API (New) のキーを設定すると、目的地画面にフリ�
 ## 使っているデータ
 
 - [公共交通オープンデータセンター（ODPT）](https://www.odpt.org/) — 列車走行位置
+- [OpenStreetMap](https://www.openstreetmap.org/) — 駅出入口の座標（© OpenStreetMap contributors, [ODbL](https://opendatacommons.org/licenses/odbl/)。2026-08 に Overpass API で取得）
 - Google Places API (New) — 目的地検索（任意・キー設定時のみ）
 
 ## ライセンス

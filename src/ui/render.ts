@@ -1,4 +1,4 @@
-import type { AppState, Destination, ExitCandidate, OriginGuess, Platform, Station } from '../types'
+import type { AppState, BoardedPosition, Destination, ExitCandidate, OriginGuess, Platform, Station } from '../types'
 import { DESTINATIONS, DESTINATION_RADIUS_METERS } from '../data/stations'
 import { distanceMeters } from '../services/geo'
 import { rankPlatformsForManualPick } from '../services/originGuess'
@@ -23,6 +23,7 @@ export interface Handlers {
   onPickPlatform: (platform: Platform) => void
   onPickDestination: (destination: Destination) => void
   onStartGuide: () => void
+  onPickBoarded: (pos: BoardedPosition | null) => void
   onGuideStep: (delta: number) => void
   onGuideExit: () => void
   onCheckOutdoor: () => void
@@ -41,6 +42,7 @@ export function render(root: HTMLElement, s: AppState, h: Handlers): void {
     case 'pickOrigin':  body.appendChild(pickOrigin(s, h)); break
     case 'pickDest':    body.appendChild(pickDest(s, h)); break
     case 'result':      body.appendChild(result(s, h)); break
+    case 'askBoarded':  body.appendChild(askBoarded(s, h)); break
     case 'guide':       body.appendChild(guide(s, h)); break
     case 'error':       body.appendChild(errorView(s, h)); break
   }
@@ -364,6 +366,42 @@ function result(s: AppState, h: Handlers): HTMLElement {
 }
 
 /**
+ * 「どのあたりに乗っていましたか？」
+ *
+ * 降りた本人が確実に知っている唯一の位置情報（乗車位置）を1タップで聞く。
+ * これと「電車が走り去った方向」から、降車直後の一歩目を言い切れる。
+ * 答えたくなければ「わからない」で従来の案内に落ちる。
+ */
+function askBoarded(s: AppState, h: Handlers): HTMLElement {
+  const w = el('div', '')
+  w.appendChild(here(s.origin?.name ?? '—', s.originTrain ? '直近の到着列車から案内を組み立てます' : ''))
+  w.appendChild(text('h2', 'ask', 'どのあたりに乗っていましたか？'))
+  w.appendChild(text('p', 'sub', '進行方向に対しての位置です。だいたいで構いません。'))
+
+  const options: Array<{ pos: BoardedPosition | null; icon: string; t1: string; t2: string }> = [
+    { pos: 'front', icon: '🔜', t1: '前のほう', t2: '進行方向の先頭寄り' },
+    { pos: 'middle', icon: '🚃', t1: '真ん中あたり', t2: '' },
+    { pos: 'rear', icon: '🔙', t1: '後ろのほう', t2: '進行方向の最後尾寄り' },
+    { pos: null, icon: '🤷', t1: 'わからない', t2: '乗車位置を使わずに案内します' },
+  ]
+
+  const list = el('div', 'list')
+  options.forEach((o) => {
+    const row = el('button', 'drow')
+    row.appendChild(text('span', 'dic', o.icon))
+    const t = el('span', 'ltext')
+    t.appendChild(text('span', 'n1', o.t1))
+    if (o.t2) t.appendChild(text('span', 'n2', o.t2))
+    row.appendChild(t)
+    row.appendChild(text('span', 'arrow', '›'))
+    row.addEventListener('click', () => h.onPickBoarded(o.pos))
+    list.appendChild(row)
+  })
+  w.appendChild(list)
+  return w
+}
+
+/**
  * ステップ案内（第2段階）
  *
  * 現在地は測らない・描かない。「次に何をするか」を1画面1指示で出し、
@@ -405,7 +443,7 @@ function guide(s: AppState, h: Handlers): HTMLElement {
     dt.appendChild(text('span', 'dirlabel', d.label))
     dt.appendChild(text('span', 'dirsub',
       (step.distanceMeters != null ? `約${step.distanceMeters}m ／ ` : '') +
-      '直前の動作を終えた向きが基準です'))
+      (step.directionBase ?? '直前の動作を終えた向きが基準です')))
     dir.appendChild(dt)
     w.appendChild(dir)
   }

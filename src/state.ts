@@ -17,6 +17,8 @@ const initial: AppState = {
   guesses: [],
   origin: null,
   originSource: null,
+  originTrain: null,
+  boardedPosition: null,
   destination: null,
   candidates: [],
   guideSteps: [],
