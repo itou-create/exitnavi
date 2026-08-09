@@ -145,18 +145,27 @@ export function buildGuideSteps(
   // --- 汎用ステップの自動生成 ---
   const steps: GuidanceStep[] = []
 
-  // 0) 降車直後。個別化できなければ、階段のホーム上の位置だけを示す。
+  // 改札が1か所・出口が2方向以下の単純な駅では、
+  // どの階段を上がっても必ず改札に着く。案内表示に頼らせる必要がない。
+  const gateCount = new Set(station.legs.map((l) => l.gateName)).size
+  const isSimpleStation = gateCount === 1 && station.exits.length <= 2
+
+  // 0) 降車直後。個別化できなくても「探させる」案内にはしない。
   const hasStairsPos = leg.stairsPositionRatio != null
   steps.push(
     personal ?? {
       kind: 'orient',
       instruction: hasStairsPos
         ? `電車を降りたら、${stairsPositionLabel(leg.stairsPositionRatio, origin)}の階段へ`
-        : `電車を降りたら、「${leg.gateName}」の案内表示を探す`,
+        : isSimpleStation
+          ? '電車を降りたら、いちばん近い階段へ'
+          : `電車を降りたら、${leg.gateName}方面の階段へ`,
       signpostedAs: leg.gateName,
       detail: hasStairsPos
         ? 'ホームの図で階段の位置を確認してください（暫定データ）'
-        : '階段の位置は未実測のため、ホーム上の吊り下げ案内に従ってください',
+        : isSimpleStation
+          ? 'この駅の改札は1か所だけです。どの階段・エスカレーターを上がっても必ず改札に着きます'
+          : '階段のホーム上の位置は未実測です（TODO: 実測で解消予定）',
     },
   )
 
@@ -167,9 +176,10 @@ export function buildGuideSteps(
       instruction: '改札のある階へ上がる',
       signpostedAs: leg.gateName,
       detail:
-        leg.stairCount > 0
+        `地下${-origin.levelIndex}階のホームから改札階へ上がります。` +
+        (leg.stairCount > 0
           ? `階段 約${leg.stairCount}段（エスカレーター併設の場合あり）`
-          : 'エスカレーター／エレベーターで上がれます',
+          : 'エスカレーター／エレベーターで上がれます'),
     })
   } else if (origin.levelIndex > 0) {
     steps.push({
@@ -197,14 +207,16 @@ export function buildGuideSteps(
     signpostedAs: leg.signpostedAs,
   })
 
-  // 3) コンコースを歩く
-  //    目標は「案内表示を見なくてもたどり着ける」だが、この経路はまだ
-  //    方向データ（direction）が未整備。嘘の方向を言い切らず、案内板に頼ると明言する。
+  // 3) コンコースを歩く。「案内板に従う」ではなく行き先を主語にする。
+  //    単純な駅なら図（立体図）だけで方向が決まる。複雑な駅で方向データが
+  //    未整備の場合も、案内表示は「確認用」の位置づけに留める。
   steps.push({
     kind: 'walk',
-    instruction: `案内板「${candidate.exit.signpostedAs}」に従って進む`,
+    instruction: `改札を出て、${candidate.exit.name}へ進む`,
     signpostedAs: candidate.exit.signpostedAs,
-    detail: `この経路は方向データ未整備のため、ここは案内板が頼りです。ホームからの目安 ${fmtMin(candidate.indoorSeconds)}（暫定値）`,
+    detail: isSimpleStation
+      ? `出口は${station.exits.map((e) => e.name).join('と')}の2方向だけです。下の図で向きを確認してください（目安 ${fmtMin(candidate.indoorSeconds)}・暫定値）`
+      : `曲がる方向のデータは未整備です（TODO: 実測で解消予定）。目安 ${fmtMin(candidate.indoorSeconds)}（暫定値）`,
   })
 
   // 4) 出口
