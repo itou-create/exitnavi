@@ -110,7 +110,24 @@ export type GuidanceStepKind =
   | 'exit'   // 出口から地上へ
 
 /**
+ * 進む方向。「直前の動作を終えたときの向き」基準。
+ * （階段を上がりきった向き・改札を抜けた向き。測位せずに方向を伝える唯一の方法）
+ */
+export type GuidanceDirection =
+  | 'straight'     // 直進
+  | 'left'         // 左へ
+  | 'right'        // 右へ
+  | 'slight-left'  // 左ななめ前
+  | 'slight-right' // 右ななめ前
+  | 'u-turn'       // 折り返す
+
+/**
  * ステップ案内の1歩
+ *
+ * ★ このアプリの目標：案内表示を見なくても目的の出口にたどり着けること。
+ *   だから direction / distanceMeters がこの型の主役。アプリが方向と距離を
+ *   言い切り、signpostedAs（案内板の表記）は答え合わせ用に格下げ。
+ *   方向データが無いステップでは、嘘を言わずに「案内板に頼る」へフォールバックする。
  *
  * 設計原則（CLAUDE.md 1）：現在地を測らない。
  * 「いまどこにいるか」を描く代わりに「次に何をするか」だけを出し、
@@ -120,7 +137,11 @@ export interface GuidanceStep {
   kind: GuidanceStepKind
   /** 大きく出す指示（例: 「中央改札を出る」） */
   instruction: string
-  /** 現地の案内板の表記（signposted_as）。指示と案内板の言葉を揃える */
+  /** 進む方向（直前の動作を終えた向き基準）。無ければ方向データ未整備 */
+  direction?: GuidanceDirection
+  /** 歩く距離の目安（m）。無ければ未整備 */
+  distanceMeters?: number
+  /** 現地の案内板の表記（signposted_as）。答え合わせ（確認）用 */
   signpostedAs?: string
   /** 補足（例: 「約18段・エスカレーター併設」） */
   detail?: string

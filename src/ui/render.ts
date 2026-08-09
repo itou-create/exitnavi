@@ -4,7 +4,7 @@ import { distanceMeters } from '../services/geo'
 import { rankPlatformsForManualPick } from '../services/originGuess'
 import { explain, fmtMin, TIE_THRESHOLD_SECONDS } from '../services/exitPicker'
 import { placesSearchEnabled, searchPlaces } from '../services/places'
-import { stepKindLabel } from '../services/guide'
+import { directionDisplay, stepKindLabel } from '../services/guide'
 import { platformDiagram, stationDiagram } from './diagram'
 
 /**
@@ -396,13 +396,28 @@ function guide(s: AppState, h: Handlers): HTMLElement {
   bar.appendChild(fill)
   w.appendChild(bar)
 
+  // 方向と距離が主役。案内表示を見なくても次の一歩が決まるようにする
+  if (step.direction) {
+    const d = directionDisplay(step.direction)
+    const dir = el('div', 'dirbox')
+    dir.appendChild(text('span', 'dirarrow', d.arrow))
+    const dt = el('span', 'ltext')
+    dt.appendChild(text('span', 'dirlabel', d.label))
+    dt.appendChild(text('span', 'dirsub',
+      (step.distanceMeters != null ? `約${step.distanceMeters}m ／ ` : '') +
+      '直前の動作を終えた向きが基準です'))
+    dir.appendChild(dt)
+    w.appendChild(dir)
+  }
+
   // 指示本体（1画面1指示）
   w.appendChild(text('div', 'stepinst', step.instruction))
   if (step.detail) w.appendChild(text('p', 'stepdetail', step.detail))
 
+  // 案内板の表記は「答え合わせ」用。主役ではない
   if (step.signpostedAs) {
     const sign = el('div', 'sign')
-    sign.appendChild(text('div', 's1', '目印にする案内板の表記'))
+    sign.appendChild(text('div', 's1', '確認用 — 近くにこの表記があれば合っています'))
     sign.appendChild(text('div', 's2', step.signpostedAs))
     w.appendChild(sign)
   }

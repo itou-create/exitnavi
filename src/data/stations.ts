@@ -172,12 +172,15 @@ export const IKEBUKURO: Station = {
     {
       platformId: 'ikebukuro_jr_saikyo', exitId: 'ikebukuro_east', traversalTime: 210, stairCount: 18, gateName: '中央改札', signpostedAs: '中央改札・東口',
       stairsPositionRatio: 0.5, // TODO: 実測
+      // direction / distanceMeters を含む手書きステップのサンプル。
+      // ⚠️ 方向・距離はすべて未実測の仮値（TODO: 実測）。現地確認するまで
+      //    「アプリだけでたどり着ける」品質を主張しないこと。
       steps: [
         { kind: 'orient', instruction: '電車を降りたら、ホーム中ほどの階段へ', signpostedAs: '中央改札', detail: '乗車位置によっては進行方向を戻る形になります（TODO: 実測）' },
-        { kind: 'move', instruction: 'ホーム中ほどの階段を上がる', signpostedAs: '中央改札', detail: '約18段・エスカレーター併設（TODO: 実測）' },
-        { kind: 'gate', instruction: '中央改札を出る', signpostedAs: '中央改札' },
-        { kind: 'walk', instruction: '「東口」の案内板に従って進む', signpostedAs: '東口・サンシャインシティ方面' },
-        { kind: 'exit', instruction: '東口から地上に出る', signpostedAs: '東口' },
+        { kind: 'move', direction: 'straight', instruction: 'ホーム中ほどの階段を上がる', signpostedAs: '中央改札', detail: '約18段・エスカレーター併設（TODO: 実測）' },
+        { kind: 'gate', direction: 'straight', distanceMeters: 40, instruction: '上がったら正面の中央改札を出る', signpostedAs: '中央改札', detail: '方向・距離は仮値（TODO: 実測）' },
+        { kind: 'walk', direction: 'slight-right', distanceMeters: 60, instruction: '改札を出たら右ななめ前へ進む', signpostedAs: '東口・サンシャインシティ方面', detail: '方向・距離は仮値（TODO: 実測）' },
+        { kind: 'exit', direction: 'straight', instruction: '正面の東口から地上に出る', signpostedAs: '東口' },
       ],
     },
     { platformId: 'ikebukuro_jr_saikyo', exitId: 'ikebukuro_west', traversalTime: 240, stairCount: 18, gateName: '中央改札', signpostedAs: '中央改札・西口' },

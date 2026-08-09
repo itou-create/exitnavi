@@ -89,11 +89,13 @@ export function buildGuideSteps(
   })
 
   // 3) コンコースを歩く
+  //    目標は「案内表示を見なくてもたどり着ける」だが、この経路はまだ
+  //    方向データ（direction）が未整備。嘘の方向を言い切らず、案内板に頼ると明言する。
   steps.push({
     kind: 'walk',
     instruction: `案内板「${candidate.exit.signpostedAs}」に従って進む`,
     signpostedAs: candidate.exit.signpostedAs,
-    detail: `ホームからの目安 ${fmtMin(candidate.indoorSeconds)}（暫定値）`,
+    detail: `この経路は方向データ未整備のため、ここは案内板が頼りです。ホームからの目安 ${fmtMin(candidate.indoorSeconds)}（暫定値）`,
   })
 
   // 4) 出口
@@ -104,6 +106,18 @@ export function buildGuideSteps(
   })
 
   return steps
+}
+
+/** 方向の表示（矢印と日本語）。矢印は「直前の動作を終えた向き」基準 */
+export function directionDisplay(d: NonNullable<GuidanceStep['direction']>): { arrow: string; label: string } {
+  switch (d) {
+    case 'straight':     return { arrow: '↑', label: 'そのまま直進' }
+    case 'left':         return { arrow: '←', label: '左へ' }
+    case 'right':        return { arrow: '→', label: '右へ' }
+    case 'slight-left':  return { arrow: '↖', label: '左ななめ前へ' }
+    case 'slight-right': return { arrow: '↗', label: '右ななめ前へ' }
+    case 'u-turn':       return { arrow: '↩', label: '折り返す' }
+  }
 }
 
 /** ステップ種類の表示ラベル */
