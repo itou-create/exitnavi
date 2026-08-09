@@ -106,6 +106,8 @@ export interface Destination {
   name: string
   position: LatLng
   emoji: string
+  /** 住所（検索結果のみ。プリセットには無い） */
+  address?: string
 }
 
 /**

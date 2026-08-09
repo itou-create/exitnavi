@@ -73,6 +73,18 @@ body{
 .dic{font-size:22px;flex:none}
 .arrow{color:var(--ink3);font-size:16px}
 
+.searchbox{margin-bottom:14px}
+.searchrow{display:flex;gap:8px}
+.searchinput{flex:1;min-width:0;border:1px solid var(--line);border-radius:11px;
+  padding:11px 12px;font-family:inherit;font-size:14px;background:var(--bg);color:var(--ink)}
+.searchinput:focus{outline:2px solid var(--brand);outline-offset:-1px}
+.searchbtn{flex:none;border:none;border-radius:11px;padding:0 18px;background:var(--brand);
+  color:#fff;font-size:13.5px;font-weight:800;font-family:inherit;cursor:pointer}
+.searchbtn:disabled{opacity:.55;cursor:default}
+.searchout{margin-top:10px}
+.searchout .sub{margin:4px 0 0}
+.attribution{font-size:10px;color:var(--ink3);text-align:right;margin:6px 2px 0}
+
 .bigexit{text-align:center;padding:6px 0 2px}
 .bigexit .pre{font-size:12.5px;color:var(--ink2);font-weight:700}
 .exname{font-size:44px;font-weight:900;letter-spacing:-.04em;line-height:1.1;margin:2px 0}

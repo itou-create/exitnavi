@@ -1,8 +1,9 @@
-import type { AppState, ExitCandidate, OriginGuess, Platform, Station } from '../types'
+import type { AppState, Destination, ExitCandidate, OriginGuess, Platform, Station } from '../types'
 import { DESTINATIONS, DESTINATION_RADIUS_METERS } from '../data/stations'
 import { distanceMeters } from '../services/geo'
 import { rankPlatformsForManualPick } from '../services/originGuess'
 import { explain, fmtMin, TIE_THRESHOLD_SECONDS } from '../services/exitPicker'
+import { placesSearchEnabled, searchPlaces } from '../services/places'
 
 /**
  * 描画
@@ -18,7 +19,7 @@ export interface Handlers {
   onAcceptGuess: (guess: OriginGuess) => void
   onOpenManualPick: () => void
   onPickPlatform: (platform: Platform) => void
-  onPickDestination: (id: string) => void
+  onPickDestination: (destination: Destination) => void
   onRestart: () => void
 }
 
@@ -196,6 +197,11 @@ function pickDest(s: AppState, h: Handlers): HTMLElement {
     `起点が確定しました ／ from_stop_id = ${s.origin?.id ?? '—'}`))
   w.appendChild(text('h2', 'ask', 'どこへ行きますか？'))
 
+  // フリーワード検索（Google Places）。キー未設定なら出さない
+  if (s.station && placesSearchEnabled()) {
+    w.appendChild(searchBlock(s.station, h))
+  }
+
   // 現在の駅から歩ける目的地だけを出す（別の街のPOIを混ぜない）
   const near = s.station
     ? DESTINATIONS.filter(
@@ -205,17 +211,88 @@ function pickDest(s: AppState, h: Handlers): HTMLElement {
 
   const list = el('div', 'list')
   near.forEach((d) => {
-    const row = el('button', 'drow')
-    row.appendChild(text('span', 'dic', d.emoji))
-    const t = el('span', 'ltext')
-    t.appendChild(text('span', 'n1', d.name))
-    row.appendChild(t)
-    row.appendChild(text('span', 'arrow', '›'))
-    row.addEventListener('click', () => h.onPickDestination(d.id))
-    list.appendChild(row)
+    list.appendChild(destinationRow(d, null, h))
   })
   w.appendChild(list)
   return w
+}
+
+/**
+ * 目的地のフリーワード検索。
+ *
+ * 再描画で入力が消えないよう、結果はこのブロック内のDOMを直接書き換える
+ * （setState を経由しない。画面遷移するのは目的地を選んだ瞬間だけ）。
+ * コスト管理のため、オートコンプリートにはせず明示的な検索実行のみ。
+ */
+function searchBlock(station: Station, h: Handlers): HTMLElement {
+  const box = el('div', 'searchbox')
+
+  const form = el('form', 'searchrow')
+  const input = el('input', 'searchinput')
+  input.type = 'search'
+  input.placeholder = '行き先を検索（店名・施設名）'
+  input.enterKeyHint = 'search'
+  const btn = el('button', 'searchbtn')
+  btn.type = 'submit'
+  btn.textContent = '検索'
+  form.appendChild(input)
+  form.appendChild(btn)
+  box.appendChild(form)
+
+  const out = el('div', 'searchout')
+  box.appendChild(out)
+
+  form.addEventListener('submit', (ev) => {
+    ev.preventDefault()
+    const query = input.value.trim()
+    if (!query) return
+
+    btn.disabled = true
+    btn.textContent = '検索中…'
+    out.innerHTML = ''
+
+    searchPlaces(query, station.position)
+      .then((results) => {
+        out.innerHTML = ''
+        if (results.length === 0) {
+          out.appendChild(text('p', 'sub', `「${query}」は見つかりませんでした。`))
+          return
+        }
+        const list = el('div', 'list')
+        results.forEach((d) => list.appendChild(destinationRow(d, station, h)))
+        out.appendChild(list)
+        // Google Places の結果を地図なしで出すときに必要な帰属表示
+        out.appendChild(text('p', 'attribution', 'Powered by Google'))
+      })
+      .catch((e) => {
+        out.innerHTML = ''
+        out.appendChild(text('p', 'sub', e instanceof Error ? e.message : String(e)))
+      })
+      .finally(() => {
+        btn.disabled = false
+        btn.textContent = '検索'
+      })
+  })
+
+  return box
+}
+
+/** 目的地1件の行。station を渡すと駅からの距離を添える */
+function destinationRow(d: Destination, station: Station | null, h: Handlers): HTMLElement {
+  const row = el('button', 'drow')
+  row.appendChild(text('span', 'dic', d.emoji))
+  const t = el('span', 'ltext')
+  t.appendChild(text('span', 'n1', d.name))
+
+  const subParts: string[] = []
+  if (station) subParts.push(`駅から約${fmtDistance(distanceMeters(d.position, station.position))}`)
+  if (d.address) subParts.push(d.address)
+  if (subParts.length > 0) t.appendChild(text('span', 'n2', subParts.join(' ／ ')))
+
+  row.appendChild(t)
+  row.appendChild(text('span', 'arrow', '›'))
+  row.addEventListener('click', () => h.onPickDestination(d))
+  return row
 }
 
 function result(s: AppState, h: Handlers): HTMLElement {

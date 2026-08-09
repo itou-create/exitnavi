@@ -1,11 +1,11 @@
 import './styles.css'
-import type { OriginGuess, Platform, Station } from './types'
+import type { Destination, OriginGuess, Platform, Station } from './types'
 import { getState, resetState, setState, subscribe } from './state'
 import { render, type Handlers } from './ui/render'
 import { getCurrentFix, nearestStations } from './services/geo'
 import { guessOrigin, isGuessUsable } from './services/originGuess'
 import { rankExits } from './services/exitPicker'
-import { DESTINATIONS, IKEBUKURO, STATIONS } from './data/stations'
+import { IKEBUKURO, STATIONS } from './data/stations'
 import { setDemoMode, usingMock } from './services/odpt'
 
 /**
@@ -38,10 +38,9 @@ const handlers: Handlers = {
   onPickPlatform(platform: Platform) {
     setState({ origin: platform, originSource: 'manual', screen: 'pickDest' })
   },
-  onPickDestination(id: string) {
+  onPickDestination(destination: Destination) {
     const s = getState()
-    const destination = DESTINATIONS.find((d) => d.id === id)
-    if (!s.station || !s.origin || !destination) return
+    if (!s.station || !s.origin) return
     setState({
       destination,
       candidates: rankExits(s.station, s.origin, destination),

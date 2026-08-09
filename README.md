@@ -106,9 +106,24 @@ src/
 
 実装する前に **`CLAUDE.md`** を読んでください。「現在地を測らない」「推定を先に出して訂正は1タップ」「事前起動を必須にしない」など、実装の都合で崩してはいけない原則が書いてあります。
 
+## 目的地のフリーワード検索（任意）
+
+Google Places API (New) のキーを設定すると、目的地画面にフリーワード検索が出ます。
+未設定なら検索欄が出ないだけで、プリセットの目的地で全画面が動きます。
+
+1. Google Cloud でプロジェクトを作り、**Places API (New)** を有効化（要課金登録。無料枠あり）
+2. APIキーを発行し、**必ず制限をかける**：
+   - アプリケーションの制限: HTTPリファラ（`https://<user>.github.io/*` と `http://localhost:5173/*`）
+   - APIの制限: Places API (New) のみ
+3. ローカルは `.env.local` の `VITE_GOOGLE_PLACES_KEY`、本番は GitHub リポジトリの
+   Settings → Secrets and variables → Actions に `VITE_GOOGLE_PLACES_KEY` を登録
+
+⚠️ キーは公開サイトのJSに埋め込まれるため、上記の制限が唯一の保護です。制限なしのキーを絶対に使わないこと。
+
 ## 使っているデータ
 
 - [公共交通オープンデータセンター（ODPT）](https://www.odpt.org/) — 列車走行位置
+- Google Places API (New) — 目的地検索（任意・キー設定時のみ）
 
 ## ライセンス
 

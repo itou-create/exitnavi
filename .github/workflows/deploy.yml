@@ -25,6 +25,10 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run build
+        env:
+          # 未設定なら該当機能がオフになるだけで、ビルドは通る
+          VITE_ODPT_TOKEN: ${{ secrets.VITE_ODPT_TOKEN }}
+          VITE_GOOGLE_PLACES_KEY: ${{ secrets.VITE_GOOGLE_PLACES_KEY }}
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist
