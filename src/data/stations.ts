@@ -442,10 +442,10 @@ export const ROKUCHONOME: Station = {
   ],
 
   legs: [
-    // 改札は1つ。B3ホーム → B1改札 → 地上。 TODO: 実測
-    // gateToExitDirection は暫定の仮値。現地で逆と分かったら left/right を入れ替えるだけ
-    { platformId: 'rokuchonome_subway_tozai', exitId: 'rokuchonome_north1', traversalTime: 150, stairCount: 0, gateName: '改札', signpostedAs: '北1出口', gateToExitDirection: 'right' },
-    { platformId: 'rokuchonome_subway_tozai', exitId: 'rokuchonome_south1', traversalTime: 160, stairCount: 0, gateName: '改札', signpostedAs: '南1出口', gateToExitDirection: 'left' },
+    // 改札は1つ。B3ホーム → B1改札 → 地上。 TODO: 実測（所要時間）
+    // gateToExitDirection: 2026-08-09 利用者の現地指摘により修正（北1=左・南1=右）
+    { platformId: 'rokuchonome_subway_tozai', exitId: 'rokuchonome_north1', traversalTime: 150, stairCount: 0, gateName: '改札', signpostedAs: '北1出口', gateToExitDirection: 'left' },
+    { platformId: 'rokuchonome_subway_tozai', exitId: 'rokuchonome_south1', traversalTime: 160, stairCount: 0, gateName: '改札', signpostedAs: '南1出口', gateToExitDirection: 'right' },
   ],
 }
 
