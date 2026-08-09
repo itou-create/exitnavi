@@ -404,7 +404,89 @@ export const ROKUCHONOME: Station = {
   ],
 }
 
-export const STATIONS: Station[] = [IKEBUKURO, SENDAI, ROKUCHONOME]
+/**
+ * 船橋駅
+ *
+ * JR（総武線快速・中央総武線各駅停車）と東武アーバンパークライン。いずれも高架。
+ * 京成船橋駅は約150m南の別駅舎（ペデストリアンデッキ接続）。第1段階では未収録。
+ *
+ * JR総武線系統は首都圏なので走行位置APIの対象になっている可能性が高いが、
+ * 未実測のため trainLocationAvailable は付けていない（池袋と同じ扱い）。
+ */
+export const FUNABASHI: Station = {
+  id: 'funabashi',
+  name: '船橋駅',
+  odptStationCode: 'Funabashi',
+  position: { lat: 35.7017, lng: 139.9853 }, // TODO: 実測
+
+  platforms: [
+    {
+      id: 'funabashi_jr_sobu_rapid',
+      stationId: 'funabashi',
+      name: 'JR総武線快速 ホーム',
+      operator: 'JR東日本',
+      line: '総武線快速',
+      odptRailway: 'odpt.Railway:JR-East.SobuRapid',
+      levelIndex: 1, // 高架
+      color: '#0074be',
+    },
+    {
+      id: 'funabashi_jr_sobu_local',
+      stationId: 'funabashi',
+      name: 'JR中央・総武線各駅停車 ホーム',
+      operator: 'JR東日本',
+      line: '中央・総武線各駅停車',
+      odptRailway: 'odpt.Railway:JR-East.ChuoSobuLocal',
+      levelIndex: 1,
+      color: '#ffd400',
+    },
+    {
+      id: 'funabashi_tobu_urbanpark',
+      stationId: 'funabashi',
+      name: '東武アーバンパークライン ホーム',
+      operator: '東武鉄道',
+      line: 'アーバンパークライン（野田線）',
+      odptRailway: 'odpt.Railway:Tobu.Noda', // TODO: ODPT上の正式な路線IDを確認
+      levelIndex: 1,
+      color: '#00a7db',
+    },
+  ],
+
+  exits: [
+    {
+      id: 'funabashi_north',
+      stationId: 'funabashi',
+      name: '北口',
+      signpostedAs: '北口・東武百貨店',            // TODO: 実測
+      position: { lat: 35.7025, lng: 139.9848 }, // TODO: 実測
+      levelIndex: 0,
+    },
+    {
+      id: 'funabashi_south',
+      stationId: 'funabashi',
+      name: '南口',
+      signpostedAs: '南口・京成船橋駅方面',        // TODO: 実測
+      position: { lat: 35.7010, lng: 139.9856 }, // TODO: 実測
+      levelIndex: 0,
+    },
+  ],
+
+  legs: [
+    // --- JR総武線快速 TODO: 実測 ---
+    { platformId: 'funabashi_jr_sobu_rapid', exitId: 'funabashi_north', traversalTime: 240, stairCount: 18, gateName: '中央改札', signpostedAs: '北口' },
+    { platformId: 'funabashi_jr_sobu_rapid', exitId: 'funabashi_south', traversalTime: 220, stairCount: 18, gateName: '中央改札', signpostedAs: '南口' },
+
+    // --- JR中央・総武線各駅停車 TODO: 実測 ---
+    { platformId: 'funabashi_jr_sobu_local', exitId: 'funabashi_north', traversalTime: 210, stairCount: 18, gateName: '中央改札', signpostedAs: '北口' },
+    { platformId: 'funabashi_jr_sobu_local', exitId: 'funabashi_south', traversalTime: 200, stairCount: 18, gateName: '中央改札', signpostedAs: '南口' },
+
+    // --- 東武アーバンパークライン（改札は北口側。百貨店に直結） TODO: 実測 ---
+    { platformId: 'funabashi_tobu_urbanpark', exitId: 'funabashi_north', traversalTime: 150, stairCount: 12, gateName: '東武改札', signpostedAs: '北口・東武百貨店' },
+    { platformId: 'funabashi_tobu_urbanpark', exitId: 'funabashi_south', traversalTime: 300, stairCount: 16, gateName: '東武改札', signpostedAs: '自由通路・南口' },
+  ],
+}
+
+export const STATIONS: Station[] = [IKEBUKURO, SENDAI, ROKUCHONOME, FUNABASHI]
 
 /**
  * 目的地
@@ -426,6 +508,11 @@ export const DESTINATIONS: Destination[] = [
   // --- 六丁の目 ---
   { id: 'frespo_rokuchonome', name: 'フレスポ六丁の目', position: { lat: 38.2527, lng: 140.9367 }, emoji: '🛍️' },
   { id: 'sendai_seikei', name: '仙台整形外科病院', position: { lat: 38.2497, lng: 140.9343 }, emoji: '🏥' },
+
+  // --- 船橋 ---
+  { id: 'tobu_dept_funabashi', name: '東武百貨店 船橋店', position: { lat: 35.7024, lng: 139.9843 }, emoji: '🏬' },
+  { id: 'funabashi_face', name: '船橋フェイス', position: { lat: 35.7008, lng: 139.9857 }, emoji: '🏢' },
+  { id: 'funabashi_cityhall', name: '船橋市役所', position: { lat: 35.6947, lng: 139.9826 }, emoji: '🏛️' },
 ]
 
 /** その駅から現実的に歩ける目的地だけを出す（暫定: 直線3km以内） */

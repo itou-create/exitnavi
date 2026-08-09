@@ -137,6 +137,40 @@ export function mockTrains(station: Station, now = new Date()): RawTrain[] {
         },
       ]
 
+    case 'funabashi':
+      return [
+        // 33秒前に船橋着（総武線快速 久里浜行き）。本命
+        {
+          '@id': 'urn:ucode:_mock_soburapid_1234F',
+          'odpt:railway': 'odpt.Railway:JR-East.SobuRapid',
+          'odpt:toStation': 'odpt.Station:JR-East.SobuRapid.Funabashi',
+          'odpt:fromStation': null,
+          'odpt:destinationStation': ['odpt.Station:JR-East.SobuRapid.Kurihama'],
+          'odpt:delay': 0,
+          'dc:date': at(33),
+        },
+        // 74秒前に船橋着（各駅停車 中野行き）。次点
+        {
+          '@id': 'urn:ucode:_mock_sobulocal_1409B',
+          'odpt:railway': 'odpt.Railway:JR-East.ChuoSobuLocal',
+          'odpt:toStation': 'odpt.Station:JR-East.ChuoSobuLocal.Funabashi',
+          'odpt:fromStation': null,
+          'odpt:destinationStation': ['odpt.Station:JR-East.ChuoSobuLocal.Nakano'],
+          'odpt:delay': 0,
+          'dc:date': at(74),
+        },
+        // 船橋を出て新船橋へ向かっている列車。到着扱いにしてはいけない
+        {
+          '@id': 'urn:ucode:_mock_urbanpark_0451',
+          'odpt:railway': 'odpt.Railway:Tobu.Noda',
+          'odpt:toStation': 'odpt.Station:Tobu.Noda.ShinFunabashi',
+          'odpt:fromStation': 'odpt.Station:Tobu.Noda.Funabashi',
+          'odpt:destinationStation': ['odpt.Station:Tobu.Noda.Kashiwa'],
+          'odpt:delay': 0,
+          'dc:date': at(50),
+        },
+      ]
+
     default:
       return []
   }
