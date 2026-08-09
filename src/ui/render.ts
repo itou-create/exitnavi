@@ -5,7 +5,9 @@ import { rankPlatformsForManualPick } from '../services/originGuess'
 import { explain, fmtMin, TIE_THRESHOLD_SECONDS } from '../services/exitPicker'
 import { placesSearchEnabled, searchPlaces } from '../services/places'
 import { directionDisplay, stepKindLabel } from '../services/guide'
-import { platformDiagram, stationDiagram } from './diagram'
+import { platformDiagram } from './diagram'
+import { stationMap } from './map'
+import { floorPlan } from './floorplans'
 
 /**
  * 描画
@@ -340,10 +342,19 @@ function result(s: AppState, h: Handlers): HTMLElement {
 
   w.appendChild(text('p', 'why', explain(best, s.candidates[1], s.origin!)))
 
-  // 駅の俯瞰模式図。目指す出口と目的地の方角を一目で
+  // 独自作成の構内図（描き起こし済みの駅のみ）と、実地図（地理院タイル）
   if (s.station) {
-    w.appendChild(stationDiagram(s.station, best.exit, best.gateName, s.destination))
-    w.appendChild(text('p', 'dgcap', '駅の俯瞰模式図(北が上)。出口の位置は暫定座標から描いています。'))
+    const fp = floorPlan(s.station.id, best.exit.id)
+    if (fp) {
+      w.appendChild(fp)
+      w.appendChild(text('p', 'dgcap', '公式構内図の事実情報を基にアプリが独自作成した簡略図です（未実地確認・暫定）。'))
+    }
+    w.appendChild(stationMap(s.station, best.exit, s.destination))
+    w.appendChild(text('p', 'dgcap',
+      '実際の地図（国土地理院 地理院タイル）に出口位置（OpenStreetMap由来・暫定）を重ねています。現在位置は表示していません。'))
+    s.station.officialMaps?.forEach((m) => {
+      w.appendChild(linkButton(`公式の構内図を開く（${m.label}）`, m.url))
+    })
   }
 
   if (s.candidates.length > 1) {
@@ -460,7 +471,7 @@ function guide(s: AppState, h: Handlers): HTMLElement {
     w.appendChild(sign)
   }
 
-  // 図面（模式図）。ステップの局面に合わせて出し分ける
+  // 図面。ステップの局面に合わせて出し分ける
   const best = s.candidates[0]
   const leg =
     s.station && s.origin && best
@@ -472,8 +483,17 @@ function guide(s: AppState, h: Handlers): HTMLElement {
       w.appendChild(text('p', 'dgcap', 'ホームの模式図です。縮尺はありません。あなたの現在位置は測っていないため描いていません。'))
     }
   } else if (s.station && best) {
-    w.appendChild(stationDiagram(s.station, best.exit, leg?.gateName ?? null, step.kind === 'exit' ? s.destination : null))
-    w.appendChild(text('p', 'dgcap', '駅の俯瞰模式図（北が上）。出口の位置は暫定座標から描いています。'))
+    // 改札〜構内は独自作成の構内図（あれば）、地上に出るステップは実地図
+    const fp = step.kind !== 'exit' ? floorPlan(s.station.id, best.exit.id) : null
+    if (fp) {
+      w.appendChild(fp)
+      w.appendChild(text('p', 'dgcap', '公式構内図の事実情報を基にアプリが独自作成した簡略図です（未実地確認・暫定）。'))
+    } else {
+      w.appendChild(stationMap(s.station, best.exit, step.kind === 'exit' ? s.destination : null))
+      w.appendChild(text('p', 'dgcap', '実際の地図（国土地理院 地理院タイル）。現在位置は表示していません。'))
+    }
+    const om = s.station.officialMaps?.[0]
+    if (om) w.appendChild(linkButton('公式の構内図を開く', om.url))
   }
 
   const last = s.guideIndex === total - 1
@@ -547,6 +567,16 @@ function button(cls: string, label: string, onClick: () => void): HTMLElement {
   b.appendChild(text('span', '', label))
   b.addEventListener('click', onClick)
   return b
+}
+
+/** 外部リンクをボタンの見た目で開く（新しいタブ） */
+function linkButton(label: string, url: string): HTMLElement {
+  const a = el('a', 'btn ghost')
+  a.textContent = label
+  a.href = url
+  a.target = '_blank'
+  a.rel = 'noopener'
+  return a
 }
 
 function here(title: string, sub: string): HTMLElement {

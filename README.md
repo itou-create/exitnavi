@@ -139,6 +139,8 @@ Google Places API (New) のキーを設定すると、目的地画面にフリ�
 
 - [公共交通オープンデータセンター（ODPT）](https://www.odpt.org/) — 列車走行位置
 - [OpenStreetMap](https://www.openstreetmap.org/) — 駅出入口の座標（© OpenStreetMap contributors, [ODbL](https://opendatacommons.org/licenses/odbl/)。2026-08 に Overpass API で取得）
+- [地理院タイル（淡色地図）](https://maps.gsi.go.jp/development/ichiran.html) — 駅周辺の実地図の背景（出典: 国土地理院）
+- 公式の構内図は各事業者の著作物のため埋め込まず、**リンクで開く**（`stations.ts` の `officialMaps`）。アプリ内に埋め込む構内図は、公式図の事実情報（改札・出口・階の構成）を基にした**独自の描き起こし**（`src/ui/floorplans.ts`。現状は六丁の目のみ）
 - Google Places API (New) — 目的地検索（任意・キー設定時のみ）
 
 ## ライセンス

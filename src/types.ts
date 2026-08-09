@@ -167,6 +167,11 @@ export interface Station {
   odptStationCode: string
   /** 駅の代表座標。最寄り駅判定に使う */
   position: LatLng
+  /**
+   * 公式の構内図ページ。図面そのものは各事業者の著作物なので
+   * アプリに埋め込まず、リンクで開く。
+   */
+  officialMaps?: Array<{ label: string; url: string }>
   platforms: Platform[]
   exits: Exit[]
   legs: ConcourseLeg[]

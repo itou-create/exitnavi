@@ -18,6 +18,10 @@ export const IKEBUKURO: Station = {
   name: '池袋駅',
   odptStationCode: 'Ikebukuro',
   position: { lat: 35.7295, lng: 139.7109 }, // TODO: 実測
+  officialMaps: [
+    { label: 'JR東日本', url: 'https://www.jreast.co.jp/estation/station/info.aspx?StationCd=108' },
+    { label: '東京メトロ', url: 'https://www.tokyometro.jp/station/ikebukuro/yardmap/index.html' },
+  ],
 
   // ------------------------------------------------------------------
   // ホーム = 案内の起点。駅ではない。
@@ -245,6 +249,10 @@ export const SENDAI: Station = {
   name: '仙台駅',
   odptStationCode: 'Sendai',
   position: { lat: 38.2602, lng: 140.8822 }, // TODO: 実測
+  officialMaps: [
+    { label: 'JR東日本', url: 'https://www.jreast.co.jp/estation/station/info.aspx?StationCd=913' },
+    { label: '仙台市地下鉄', url: 'https://www.kotsu.city.sendai.jp/subway/station/' },
+  ],
 
   platforms: [
     {
@@ -388,6 +396,9 @@ export const ROKUCHONOME: Station = {
   name: '六丁の目駅',
   odptStationCode: 'Rokuchonome',
   position: { lat: 38.2510, lng: 140.9356 }, // Wikipedia の座標。TODO: 実測
+  officialMaps: [
+    { label: '仙台市地下鉄', url: 'https://www.kotsu.city.sendai.jp/subway/station/list/rokuchonome/' },
+  ],
 
   platforms: [
     {
@@ -445,6 +456,9 @@ export const FUNABASHI: Station = {
   name: '船橋駅',
   odptStationCode: 'Funabashi',
   position: { lat: 35.7017, lng: 139.9853 }, // TODO: 実測
+  officialMaps: [
+    { label: 'JR東日本', url: 'https://www.jreast.co.jp/estation/station/info.aspx?StationCD=1382' },
+  ],
 
   platforms: [
     {

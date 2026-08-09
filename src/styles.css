@@ -155,5 +155,30 @@ a.btn{text-decoration:none}
 .dg-dest-head{fill:var(--brand)}
 .dg-center{fill:var(--brand)}
 
+/* 実地図（地理院タイル）。タイルは常に明色なので文字色は固定 */
+.mapdg .dg-halo{stroke:#fff}
+.mp-label{font-size:21px;font-weight:800;fill:#16324f}
+.mp-small{font-size:17px;font-weight:700;fill:#3d5166}
+.mp-exit{fill:#5b6b7d;opacity:.8;stroke:#fff;stroke-width:2}
+.mp-target{fill:var(--go);stroke:#fff;stroke-width:4}
+.mp-pintext{font-size:17px;font-weight:800;fill:#fff;stroke:none}
+.mp-dest{stroke:#0b62d6;stroke-width:4;stroke-dasharray:11 8;fill:none}
+.mp-desthead{fill:#0b62d6}
+.mp-destpin{fill:#0b62d6;stroke:#fff;stroke-width:3}
+.mp-attrbg{fill:rgba(255,255,255,.78)}
+.mp-attr{font-size:14px;fill:#333;stroke:none}
+@media (prefers-color-scheme: dark){ .mapdg image{filter:brightness(.88) saturate(.9)} }
+
+/* 独自作成の構内図 */
+.fp-title{font-size:20px;font-weight:800;fill:var(--ink)}
+.fp-label{font-size:18px;font-weight:800;fill:var(--ink)}
+.fp-small{font-size:15px;font-weight:700;fill:var(--ink2)}
+.fp-note{font-size:13px;fill:var(--ink3)}
+.fp-floor{fill:var(--card);stroke:var(--line);stroke-width:2.5}
+.fp-gate{fill:var(--brand)}
+.fp-stairs{fill:var(--ink3)}
+.fp-exit{fill:var(--ink3)}
+.fp-exit-target{fill:var(--go)}
+
 /* 画面下部にボタンを寄せる */
 .body>div>.btn:last-child{margin-top:auto}
