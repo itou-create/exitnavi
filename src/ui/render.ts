@@ -10,6 +10,7 @@ import { stationMap } from './map'
 import { floorPlan } from './floorplans'
 import { bearingDegrees } from '../services/geo'
 import { startCompass } from '../services/compass'
+import { startStepCounter, STRIDE_METERS } from '../services/steps'
 
 /**
  * 描画
@@ -502,6 +503,11 @@ function guide(s: AppState, h: Handlers): HTMLElement {
 
   const last = s.guideIndex === total - 1
 
+  // 歩数による進み具合（構内での精度向上）。歩く系のステップにだけ出す
+  if (step.kind === 'orient' || step.kind === 'walk' || step.kind === 'gate') {
+    w.appendChild(walkProgressBlock(step.distanceMeters ?? null))
+  }
+
   if (!last) {
     w.appendChild(text('p', 'stepnext', `次：${s.guideSteps[s.guideIndex + 1].instruction}`))
   } else {
@@ -592,6 +598,49 @@ function button(cls: string, label: string, onClick: () => void): HTMLElement {
   b.appendChild(text('span', '', label))
   b.addEventListener('click', onClick)
   return b
+}
+
+/**
+ * 歩数による進み具合。屋内で絶対位置は取れないが、
+ * 「指示どおりに進めているか」は歩数×歩幅の推定で伝えられる。
+ * 目安距離（distanceMeters）があれば進捗バーと「そろそろ」通知を出す。
+ */
+function walkProgressBlock(targetMeters: number | null): HTMLElement {
+  const box = el('div', 'walkbox')
+  const note = text('p', 'compassnote',
+    targetMeters != null
+      ? `このステップの目安は約${targetMeters}mです。歩数で進み具合を出せます`
+      : '歩数で歩いた距離の目安を出せます')
+  const bar = el('div', 'stepbar')
+  const fill = el('div', 'stepfill')
+  bar.appendChild(fill)
+  bar.style.display = 'none'
+
+  const btn = button('ghost', '歩数で進み具合を表示', () => {
+    void startStepCounter((steps) => {
+      const meters = Math.round(steps * STRIDE_METERS)
+      if (targetMeters != null) {
+        bar.style.display = ''
+        const ratio = Math.min(meters / targetMeters, 1)
+        fill.style.width = `${Math.round(ratio * 100)}%`
+        note.textContent =
+          ratio >= 1
+            ? `約${meters}m歩きました — そろそろ次の目印です（歩幅${STRIDE_METERS}m換算の目安）`
+            : `約${meters}m / 目安${targetMeters}m（歩幅${STRIDE_METERS}m換算）`
+      } else {
+        note.textContent = `ここまで約${meters}m（${steps}歩 × 歩幅${STRIDE_METERS}m の目安）`
+      }
+    }).then((res) => {
+      if (res === 'denied') note.textContent = 'モーションセンサーの利用が許可されませんでした'
+      else if (res === 'unsupported') note.textContent = 'この端末ではモーションセンサーを使えません'
+      else btn.style.display = 'none'
+    })
+  })
+
+  box.appendChild(note)
+  box.appendChild(bar)
+  box.appendChild(btn)
+  return box
 }
 
 /**

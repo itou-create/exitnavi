@@ -9,6 +9,7 @@ import { buildGuideSteps, canPersonalizeOrient } from './services/guide'
 import { IKEBUKURO, STATIONS } from './data/stations'
 import { setDemoMode, usingMock } from './services/odpt'
 import { stopCompass } from './services/compass'
+import { stopStepCounter } from './services/steps'
 
 /**
  * 「この駅にいる」と自動判定してよい距離の上限。
@@ -72,6 +73,7 @@ const handlers: Handlers = {
   },
   onGuideStep(delta: number) {
     stopCompass()
+    stopStepCounter()
     const s = getState()
     const next = Math.min(Math.max(s.guideIndex + delta, 0), s.guideSteps.length - 1)
     setState({ guideIndex: next })
@@ -79,6 +81,7 @@ const handlers: Handlers = {
   onGuideExit() {
     // 案内をやめて結果画面へ戻る（データは保持）
     stopCompass()
+    stopStepCounter()
     setState({ screen: 'result', guideArrivalNote: null })
   },
   async onCheckOutdoor() {
@@ -99,6 +102,7 @@ const handlers: Handlers = {
   },
   onRestart() {
     stopCompass()
+    stopStepCounter()
     setDemoMode(false)
     resetState()
     void start()

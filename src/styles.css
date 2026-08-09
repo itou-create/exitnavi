@@ -134,6 +134,11 @@ a.btn{text-decoration:none}
 .dirlabel{display:block;font-size:19px;font-weight:900;letter-spacing:-.01em}
 .dirsub{display:block;font-size:10.5px;color:var(--ink3);margin-top:2px}
 
+/* 歩数の進み具合 */
+.walkbox{margin:12px 0 0;background:var(--bg);border-radius:11px;padding:12px 14px}
+.walkbox .stepbar{margin:8px 0}
+.walkbox .btn{margin-top:6px}
+
 /* コンパス */
 .compassbox{margin:12px 0 0;text-align:center;background:var(--bg);border-radius:11px;padding:14px}
 .compassdial{width:96px;height:96px;border-radius:50%;border:2px solid var(--line);
