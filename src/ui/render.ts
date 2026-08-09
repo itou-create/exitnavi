@@ -1,5 +1,6 @@
-import type { AppState, ExitCandidate, OriginGuess, Platform } from '../types'
-import { DESTINATIONS } from '../data/stations'
+import type { AppState, ExitCandidate, OriginGuess, Platform, Station } from '../types'
+import { DESTINATIONS, DESTINATION_RADIUS_METERS } from '../data/stations'
+import { distanceMeters } from '../services/geo'
 import { rankPlatformsForManualPick } from '../services/originGuess'
 import { explain, fmtMin, TIE_THRESHOLD_SECONDS } from '../services/exitPicker'
 
@@ -11,6 +12,9 @@ import { explain, fmtMin, TIE_THRESHOLD_SECONDS } from '../services/exitPicker'
  */
 
 export interface Handlers {
+  onPickStation: (station: Station) => void
+  /** 駅の近くにいない人向け。モックデータで一通りの流れを体験する */
+  onStartDemo: () => void
   onAcceptGuess: (guess: OriginGuess) => void
   onOpenManualPick: () => void
   onPickPlatform: (platform: Platform) => void
@@ -25,6 +29,7 @@ export function render(root: HTMLElement, s: AppState, h: Handlers): void {
   const body = el('div', 'body')
   switch (s.screen) {
     case 'locating':    body.appendChild(locating(s)); break
+    case 'pickStation': body.appendChild(pickStation(s, h)); break
     case 'guessOrigin': body.appendChild(guessOrigin(s, h)); break
     case 'pickOrigin':  body.appendChild(pickOrigin(s, h)); break
     case 'pickDest':    body.appendChild(pickDest(s, h)); break
@@ -61,6 +66,43 @@ function locating(_s: AppState): HTMLElement {
   w.appendChild(text('p', 'sub', 'GPS・Wi-Fi・基地局から現在地を推定しています'))
   w.appendChild(text('p', 'hint', '地下でも「どの駅か」までは取れることが多い一方、「改札のどちら側か」は取れません。'))
   return w
+}
+
+/**
+ * 駅の選択。自動判定できなかったときだけ出す画面。
+ * 「対応駅の圏外なのに池袋として案内する」という嘘をつかないための画面でもある。
+ */
+function pickStation(s: AppState, h: Handlers): HTMLElement {
+  const w = el('div', '')
+  w.appendChild(text('h2', 'ask', 'どの駅にいますか？'))
+  if (s.locateNote) w.appendChild(text('p', 'sub', s.locateNote))
+
+  const list = el('div', 'list')
+  s.stationChoices.forEach(({ station, meters }) => {
+    const row = el('button', 'drow')
+    row.appendChild(text('span', 'dic', '🚉'))
+    const t = el('span', 'ltext')
+    t.appendChild(text('span', 'n1', station.name))
+    t.appendChild(text('span', 'n2',
+      meters != null ? `現在地から約${fmtDistance(meters)}` : `${station.platforms.length}路線`))
+    row.appendChild(t)
+    row.appendChild(text('span', 'arrow', '›'))
+    row.addEventListener('click', () => h.onPickStation(station))
+    list.appendChild(row)
+  })
+  w.appendChild(list)
+
+  // 駅の近くにいない人には、実データの代わりにデモを提案する
+  const demo = button('ghost', 'デモにしますか？（モックデータで体験）', () => h.onStartDemo())
+  demo.appendChild(text('small', '', '池袋駅に着いた想定で、推定→出口案内の流れを試せます'))
+  w.appendChild(demo)
+
+  return w
+}
+
+function fmtDistance(meters: number): string {
+  if (meters < 1000) return `${Math.round(meters)}m`
+  return `${(meters / 1000).toFixed(meters < 10_000 ? 1 : 0)}km`
 }
 
 /** ★ 起点の推定。当てにいって、違えば1タップで直せる */
@@ -111,7 +153,16 @@ function pickOrigin(s: AppState, h: Handlers): HTMLElement {
   const w = el('div', '')
   w.appendChild(text('h2', 'ask', 'どの路線で来ましたか？'))
   w.appendChild(text('p', 'sub',
-    `${s.station?.name ?? ''}は複数の事業者が乗り入れています。ホームの位置がまったく違います。`))
+    s.station && s.station.platforms.length > 1
+      ? `${s.station.name}は複数の路線が乗り入れています。ホームの位置がまったく違います。`
+      : `${s.station?.name ?? ''}のホームを確認してください。`))
+
+  // 走行位置データが無い駅では、自動推定できない事実を隠さない
+  if (s.station && !s.usingMock && s.station.platforms.every((p) => p.trainLocationAvailable === false)) {
+    w.appendChild(text('p', 'hint',
+      'この駅の路線は走行位置データが未提供のため、到着列車からの自動推定はできません。'))
+  }
+
   w.appendChild(platformList(s, h))
   return w
 }
@@ -145,8 +196,15 @@ function pickDest(s: AppState, h: Handlers): HTMLElement {
     `起点が確定しました ／ from_stop_id = ${s.origin?.id ?? '—'}`))
   w.appendChild(text('h2', 'ask', 'どこへ行きますか？'))
 
+  // 現在の駅から歩ける目的地だけを出す（別の街のPOIを混ぜない）
+  const near = s.station
+    ? DESTINATIONS.filter(
+        (d) => distanceMeters(d.position, s.station!.position) <= DESTINATION_RADIUS_METERS,
+      )
+    : DESTINATIONS
+
   const list = el('div', 'list')
-  DESTINATIONS.forEach((d) => {
+  near.forEach((d) => {
     const row = el('button', 'drow')
     row.appendChild(text('span', 'dic', d.emoji))
     const t = el('span', 'ltext')

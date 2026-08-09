@@ -16,11 +16,13 @@ import type { Station, Destination } from '../types'
 export const IKEBUKURO: Station = {
   id: 'ikebukuro',
   name: '池袋駅',
+  odptStationCode: 'Ikebukuro',
   position: { lat: 35.7295, lng: 139.7109 }, // TODO: 実測
 
   // ------------------------------------------------------------------
   // ホーム = 案内の起点。駅ではない。
   // 4事業者8路線、地上1Fから地下4Fまで散らばっている。
+  // trainLocationAvailable は未確認（実測が最優先タスク）のため付けていない。
   // ------------------------------------------------------------------
   platforms: [
     {
@@ -206,14 +208,225 @@ export const IKEBUKURO: Station = {
   ],
 }
 
-export const STATIONS: Station[] = [IKEBUKURO]
+/**
+ * 仙台駅
+ *
+ * ⚠️ ODPT のデータ提供状況（2026-08 にカタログで確認）：
+ *   - 仙台市交通局が ODPT に出しているのは「バス」の GTFS-JP / GTFS-RT のみ。
+ *     地下鉄（南北線・東西線）の走行位置は提供されていない。
+ *   - JR東日本の走行位置（odpt:Train）は首都圏在来線のみ。東北エリアは対象外。
+ *   → 全路線 trainLocationAvailable: false。この駅では起点の自動推定はできず、
+ *     手動選択が正規ルートになる（UIで正直に示す）。モック時のみ推定デモが動く。
+ *
+ * 地下鉄路線の odptRailway は ODPT 未登録のため仮のID。実在しない。
+ */
+export const SENDAI: Station = {
+  id: 'sendai',
+  name: '仙台駅',
+  odptStationCode: 'Sendai',
+  position: { lat: 38.2602, lng: 140.8822 }, // TODO: 実測
+
+  platforms: [
+    {
+      id: 'sendai_shinkansen',
+      stationId: 'sendai',
+      name: '東北新幹線 ホーム',
+      operator: 'JR東日本',
+      line: '東北新幹線',
+      odptRailway: 'odpt.Railway:JR-East.TohokuShinkansen',
+      trainLocationAvailable: false, // 新幹線の走行位置は ODPT 非提供
+      levelIndex: 2, // 新幹線ホームは3F
+      color: '#00a95f',
+    },
+    {
+      id: 'sendai_jr_tohoku',
+      stationId: 'sendai',
+      name: 'JR東北本線 ホーム',
+      operator: 'JR東日本',
+      line: '東北本線（常磐線・空港アクセス線直通含む）',
+      odptRailway: 'odpt.Railway:JR-East.Tohoku',
+      trainLocationAvailable: false, // JR東の走行位置提供は首都圏のみ
+      levelIndex: 0,
+      color: '#3cb371',
+    },
+    {
+      id: 'sendai_jr_senzan',
+      stationId: 'sendai',
+      name: 'JR仙山線 ホーム',
+      operator: 'JR東日本',
+      line: '仙山線',
+      odptRailway: 'odpt.Railway:JR-East.Senzan',
+      trainLocationAvailable: false,
+      levelIndex: 0,
+      color: '#d35d8e',
+    },
+    {
+      id: 'sendai_jr_senseki',
+      stationId: 'sendai',
+      name: 'JR仙石線 ホーム（地下）',
+      operator: 'JR東日本',
+      line: '仙石線',
+      odptRailway: 'odpt.Railway:JR-East.Senseki',
+      trainLocationAvailable: false,
+      levelIndex: -2, // 地下2階 TODO: 実測
+      color: '#00aeef',
+    },
+    {
+      id: 'sendai_subway_namboku',
+      stationId: 'sendai',
+      name: '地下鉄南北線 ホーム',
+      operator: '仙台市地下鉄',
+      line: '南北線',
+      odptRailway: 'odpt.Railway:SendaiCity.Namboku', // 仮ID（ODPT未登録）
+      trainLocationAvailable: false, // 仙台市交通局の ODPT 提供はバスのみ
+      levelIndex: -3, // 地下3階
+      color: '#109e49',
+    },
+    {
+      id: 'sendai_subway_tozai',
+      stationId: 'sendai',
+      name: '地下鉄東西線 ホーム',
+      operator: '仙台市地下鉄',
+      line: '東西線',
+      odptRailway: 'odpt.Railway:SendaiCity.Tozai', // 仮ID（ODPT未登録）
+      trainLocationAvailable: false,
+      levelIndex: -4, // 地下4階
+      color: '#0072bc',
+    },
+  ],
+
+  exits: [
+    {
+      id: 'sendai_west',
+      stationId: 'sendai',
+      name: '西口',
+      signpostedAs: '西口・ペデストリアンデッキ',   // TODO: 実測
+      position: { lat: 38.2604, lng: 140.8807 },   // TODO: 実測
+      levelIndex: 0,
+    },
+    {
+      id: 'sendai_east',
+      stationId: 'sendai',
+      name: '東口',
+      signpostedAs: '東口・ヨドバシカメラ方面',     // TODO: 実測
+      position: { lat: 38.2599, lng: 140.8840 },   // TODO: 実測
+      levelIndex: 0,
+    },
+    {
+      id: 'sendai_south_underground',
+      stationId: 'sendai',
+      name: '地下南出口（青葉通方面）',
+      signpostedAs: '南1出口',                      // TODO: 実測（地下鉄出口番号を現地確認）
+      position: { lat: 38.2585, lng: 140.8800 },   // TODO: 実測
+      levelIndex: 0,
+    },
+  ],
+
+  legs: [
+    // --- 東北新幹線（3F。中央改札から西口/東口へ） TODO: 実測 ---
+    { platformId: 'sendai_shinkansen', exitId: 'sendai_west', traversalTime: 330, stairCount: 0, gateName: '新幹線中央改札', signpostedAs: '西口' },
+    { platformId: 'sendai_shinkansen', exitId: 'sendai_east', traversalTime: 300, stairCount: 0, gateName: '新幹線東改札', signpostedAs: '東口' },
+
+    // --- 東北本線（地上2Fコンコース経由） TODO: 実測 ---
+    { platformId: 'sendai_jr_tohoku', exitId: 'sendai_west', traversalTime: 240, stairCount: 20, gateName: '中央改札', signpostedAs: '西口' },
+    { platformId: 'sendai_jr_tohoku', exitId: 'sendai_east', traversalTime: 300, stairCount: 20, gateName: '中央改札', signpostedAs: '東西自由通路・東口' },
+
+    // --- 仙山線 TODO: 実測 ---
+    { platformId: 'sendai_jr_senzan', exitId: 'sendai_west', traversalTime: 270, stairCount: 20, gateName: '中央改札', signpostedAs: '西口' },
+    { platformId: 'sendai_jr_senzan', exitId: 'sendai_east', traversalTime: 330, stairCount: 20, gateName: '中央改札', signpostedAs: '東西自由通路・東口' },
+
+    // --- 仙石線（地下ホーム。西側の地下コンコースに近い） TODO: 実測 ---
+    { platformId: 'sendai_jr_senseki', exitId: 'sendai_west', traversalTime: 300, stairCount: 0, gateName: '仙石線北改札', signpostedAs: '西口方面' },
+    { platformId: 'sendai_jr_senseki', exitId: 'sendai_east', traversalTime: 420, stairCount: 12, gateName: '仙石線南改札', signpostedAs: '東口方面' },
+    { platformId: 'sendai_jr_senseki', exitId: 'sendai_south_underground', traversalTime: 360, stairCount: 0, gateName: '仙石線南改札', signpostedAs: '地下鉄連絡通路' },
+
+    // --- 地下鉄南北線（B3F。地下自由通路で西口側に直結） TODO: 実測 ---
+    { platformId: 'sendai_subway_namboku', exitId: 'sendai_west', traversalTime: 300, stairCount: 0, gateName: '南北線北改札', signpostedAs: 'JR仙台駅・西口方面' },
+    { platformId: 'sendai_subway_namboku', exitId: 'sendai_south_underground', traversalTime: 240, stairCount: 0, gateName: '南北線南改札', signpostedAs: '青葉通・南出口' },
+    { platformId: 'sendai_subway_namboku', exitId: 'sendai_east', traversalTime: 480, stairCount: 10, gateName: '南北線北改札', signpostedAs: '東西自由通路・東口' },
+
+    // --- 地下鉄東西線（B4F。最深部） TODO: 実測 ---
+    { platformId: 'sendai_subway_tozai', exitId: 'sendai_west', traversalTime: 360, stairCount: 0, gateName: '東西線改札', signpostedAs: 'JR仙台駅・西口方面' },
+    { platformId: 'sendai_subway_tozai', exitId: 'sendai_south_underground', traversalTime: 300, stairCount: 0, gateName: '東西線改札', signpostedAs: '青葉通・南出口' },
+    { platformId: 'sendai_subway_tozai', exitId: 'sendai_east', traversalTime: 480, stairCount: 10, gateName: '東西線改札', signpostedAs: '東西自由通路・東口' },
+  ],
+}
+
+/**
+ * 六丁の目駅（仙台市地下鉄東西線 T12）
+ *
+ * 島式1面2線・地下駅。出入口は北1・南1の2つ（Wikipedia 調べ。TODO: 現地確認）。
+ * 走行位置データは仙台駅と同じく非提供（仙台市交通局はバスのみ）。
+ */
+export const ROKUCHONOME: Station = {
+  id: 'rokuchonome',
+  name: '六丁の目駅',
+  odptStationCode: 'Rokuchonome',
+  position: { lat: 38.2510, lng: 140.9356 }, // Wikipedia の座標。TODO: 実測
+
+  platforms: [
+    {
+      id: 'rokuchonome_subway_tozai',
+      stationId: 'rokuchonome',
+      name: '地下鉄東西線 ホーム',
+      operator: '仙台市地下鉄',
+      line: '東西線',
+      odptRailway: 'odpt.Railway:SendaiCity.Tozai', // 仮ID（ODPT未登録）
+      trainLocationAvailable: false,
+      levelIndex: -3, // 地下3階 TODO: 実測
+      color: '#0072bc',
+    },
+  ],
+
+  exits: [
+    {
+      id: 'rokuchonome_north1',
+      stationId: 'rokuchonome',
+      name: '北1出口',
+      signpostedAs: '北1',                          // TODO: 実測
+      position: { lat: 38.2514, lng: 140.9361 },   // TODO: 実測
+      levelIndex: 0,
+    },
+    {
+      id: 'rokuchonome_south1',
+      stationId: 'rokuchonome',
+      name: '南1出口',
+      signpostedAs: '南1',                          // TODO: 実測
+      position: { lat: 38.2506, lng: 140.9351 },   // TODO: 実測
+      levelIndex: 0,
+    },
+  ],
+
+  legs: [
+    // 改札は1つ。B3ホーム → B1改札 → 地上。 TODO: 実測
+    { platformId: 'rokuchonome_subway_tozai', exitId: 'rokuchonome_north1', traversalTime: 150, stairCount: 0, gateName: '改札', signpostedAs: '北1出口' },
+    { platformId: 'rokuchonome_subway_tozai', exitId: 'rokuchonome_south1', traversalTime: 160, stairCount: 0, gateName: '改札', signpostedAs: '南1出口' },
+  ],
+}
+
+export const STATIONS: Station[] = [IKEBUKURO, SENDAI, ROKUCHONOME]
 
 /**
  * 目的地
  * TODO: OSM の POI から引くようにする（いまは決め打ち）
+ * 座標はすべて暫定。TODO: 実測
  */
 export const DESTINATIONS: Destination[] = [
+  // --- 池袋 ---
   { id: 'sunshine_aqua', name: 'サンシャイン水族館', position: { lat: 35.7289, lng: 139.7195 }, emoji: '🐧' },
   { id: 'geigeki', name: '東京芸術劇場', position: { lat: 35.7309, lng: 139.7037 }, emoji: '🎭' },
   { id: 'parco', name: '池袋パルコ', position: { lat: 35.7301, lng: 139.7128 }, emoji: '🏬' },
+
+  // --- 仙台 ---
+  { id: 'hapina', name: 'ハピナ名掛丁アーケード', position: { lat: 38.2617, lng: 140.8797 }, emoji: '🏮' },
+  { id: 'yodobashi_sendai', name: 'ヨドバシカメラ仙台', position: { lat: 38.2598, lng: 140.8846 }, emoji: '📷' },
+  { id: 'sendai_asaichi', name: '仙台朝市', position: { lat: 38.2578, lng: 140.8797 }, emoji: '🐟' },
+  { id: 'anpanman_sendai', name: '仙台アンパンマンこどもミュージアム', position: { lat: 38.2622, lng: 140.8927 }, emoji: '🍞' },
+
+  // --- 六丁の目 ---
+  { id: 'frespo_rokuchonome', name: 'フレスポ六丁の目', position: { lat: 38.2527, lng: 140.9367 }, emoji: '🛍️' },
+  { id: 'sendai_seikei', name: '仙台整形外科病院', position: { lat: 38.2497, lng: 140.9343 }, emoji: '🏥' },
 ]
+
+/** その駅から現実的に歩ける目的地だけを出す（暫定: 直線3km以内） */
+export const DESTINATION_RADIUS_METERS = 3000

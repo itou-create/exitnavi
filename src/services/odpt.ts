@@ -16,8 +16,15 @@ const FORCE_MOCK = String(import.meta.env.VITE_FORCE_MOCK) === 'true'
 /** 開発時は vite.config.ts の proxy 経由（CORS 回避）、本番は直叩き */
 const BASE = import.meta.env.DEV ? '/odpt' : 'https://api.odpt.org/api/v4'
 
+/** 「デモにしますか？」でユーザーが選んだデモモード。リスタートで解除する */
+let demoMode = false
+
+export function setDemoMode(on: boolean): void {
+  demoMode = on
+}
+
 export function usingMock(): boolean {
-  return FORCE_MOCK || !TOKEN
+  return FORCE_MOCK || demoMode || !TOKEN
 }
 
 /**
@@ -34,21 +41,32 @@ export async function fetchArrivedTrains(
   station: Station,
   withinSeconds = 90,
 ): Promise<{ trains: ArrivedTrain[]; mocked: boolean }> {
-  const railways = [...new Set(station.platforms.map((p) => p.odptRailway))]
+  // trainLocationAvailable === false の路線（非提供を確認済み）には問い合わせない
+  const railways = [
+    ...new Set(
+      station.platforms
+        .filter((p) => p.trainLocationAvailable !== false)
+        .map((p) => p.odptRailway),
+    ),
+  ]
 
   let raw: RawTrain[]
   let mocked = false
 
   if (usingMock()) {
-    raw = mockTrains()
+    raw = mockTrains(station)
     mocked = true
+  } else if (railways.length === 0) {
+    // この駅の全路線が走行位置を出していない。推定できないことを正直に返す。
+    // （モックにすり替えない——実運用で嘘の推定を出さないため）
+    raw = []
   } else {
     try {
       raw = await fetchReal(railways)
     } catch (e) {
       // 実APIが落ちていてもアプリは止めない。モックに落ちて、UIに明示する。
       console.warn('[odpt] 実APIの取得に失敗したためモックに切り替えます', e)
-      raw = mockTrains()
+      raw = mockTrains(station)
       mocked = true
     }
   }
@@ -86,12 +104,14 @@ function toArrived(raw: RawTrain[], station: Station, withinSeconds: number): Ar
   const now = Date.now()
   const railwayToPlatform = new Map(station.platforms.map((p) => [p.odptRailway, p.id]))
 
+  const suffix = `.${station.odptStationCode}`
+
   return raw
     .filter((t) => {
       const to = t['odpt:toStation'] ?? ''
       const from = t['odpt:fromStation'] ?? ''
-      const arrivedHere = to.endsWith('.Ikebukuro') // TODO: 駅IDの一般化（いまは池袋のみ）
-      const alreadyLeft = from.endsWith('.Ikebukuro')
+      const arrivedHere = to.endsWith(suffix)
+      const alreadyLeft = from.endsWith(suffix)
       if (!arrivedHere || alreadyLeft) return false
 
       const age = (now - new Date(t['dc:date']).getTime()) / 1000

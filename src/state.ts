@@ -11,6 +11,8 @@ import type { AppState } from './types'
 const initial: AppState = {
   screen: 'locating',
   station: null,
+  stationChoices: [],
+  locateNote: null,
   accuracy: null,
   guesses: [],
   origin: null,

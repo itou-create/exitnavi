@@ -31,6 +31,14 @@ export interface Platform {
   line: string
   /** ODPT の odpt:Railway 値。走行位置APIとの突き合わせに使う */
   odptRailway: string
+  /**
+   * ODPT がこの路線の走行位置（odpt:Train）を提供しているか。
+   *   true  = 提供を確認済み
+   *   false = 非提供を確認済み（例: 仙台市地下鉄はバスのみ提供）
+   *   undefined = 未確認（実測待ち。実APIでは問い合わせを試みる）
+   * false の路線は実APIに問い合わせない。推定できないことを UI で正直に示す。
+   */
+  trainLocationAvailable?: boolean
   /** 階層。GTFS levels.txt の level_index。0 = 地上階、-1 = 地下1階 */
   levelIndex: number
   /** 路線カラー（UI用） */
@@ -80,6 +88,11 @@ export interface ConcourseLeg {
 export interface Station {
   id: string
   name: string
+  /**
+   * ODPT の駅IDの末尾（例: 'Ikebukuro', 'Sendai'）。
+   * odpt:Train の toStation / fromStation との突き合わせに使う。
+   */
+  odptStationCode: string
   /** 駅の代表座標。最寄り駅判定に使う */
   position: LatLng
   platforms: Platform[]
@@ -159,6 +172,7 @@ export type OriginSource =
 /** 画面 */
 export type ScreenId =
   | 'locating'      // 駅を探している
+  | 'pickStation'   // 駅の選択（圏外・測位失敗時。池袋と偽らない）
   | 'guessOrigin'   // 「この電車で来ましたか？」
   | 'pickOrigin'    // 路線の選び直し
   | 'pickDest'      // 目的地の選択
@@ -169,6 +183,10 @@ export type ScreenId =
 export interface AppState {
   screen: ScreenId
   station: Station | null
+  /** pickStation 画面の選択肢。meters は現在地からの距離（測位失敗時は null） */
+  stationChoices: Array<{ station: Station; meters: number | null }>
+  /** pickStation 画面に出す理由（圏外・測位失敗）。嘘をつかないための説明 */
+  locateNote: string | null
   /** 位置情報の精度（m）。地上に出たかの判定にも使う */
   accuracy: number | null
   guesses: OriginGuess[]
