@@ -300,7 +300,7 @@ export const SENDAI: Station = {
       trainLocationAvailable: false,
       platformEnds: { a: 'あおば通寄り', b: '榴ケ岡・石巻寄り' }, // TODO: 実測
       platformType: 'island', // 1面2線
-      levelIndex: -2, // 地下2階 TODO: 実測
+      levelIndex: -2, // 地下2階（Wikipedia 駅構造で確認済み）
       color: '#00aeef',
     },
     {
@@ -360,23 +360,31 @@ export const SENDAI: Station = {
     },
   ],
 
+  // ------------------------------------------------------------------
+  // 改札の名前・階の構成は Wikipedia「仙台駅」駅構造の記述から読み込み（2026-08）:
+  //   JR在来線: 中央口改札(2F)・東口改札(2F)・地下東口改札(B1)・地下南口(B1)
+  //   新幹線: 中央口改札(3F)・南口改札(3F)
+  //   仙石線ホームは地下2階で、地下東口改札(B1)が最寄り
+  //   南北線: 北改札・南改札
+  // 所要時間・段数・方向は引き続き暫定（TODO: 実測 / docs/survey-sheet.md）
+  // ------------------------------------------------------------------
   legs: [
-    // --- 東北新幹線（3F。中央改札から西口/東口へ） TODO: 実測 ---
-    { platformId: 'sendai_shinkansen', exitId: 'sendai_west', traversalTime: 330, stairCount: 0, gateName: '新幹線中央改札', signpostedAs: '西口' },
-    { platformId: 'sendai_shinkansen', exitId: 'sendai_east', traversalTime: 300, stairCount: 0, gateName: '新幹線東改札', signpostedAs: '東口' },
+    // --- 東北新幹線（3F改札 → 2F自由通路 → 各口） TODO: 実測 ---
+    { platformId: 'sendai_shinkansen', exitId: 'sendai_west', traversalTime: 330, stairCount: 0, gateName: '新幹線中央口改札', signpostedAs: '西口' },
+    { platformId: 'sendai_shinkansen', exitId: 'sendai_east', traversalTime: 300, stairCount: 0, gateName: '新幹線中央口改札', signpostedAs: '東西自由通路・東口' },
 
-    // --- 東北本線（地上2Fコンコース経由） TODO: 実測 ---
-    { platformId: 'sendai_jr_tohoku', exitId: 'sendai_west', traversalTime: 240, stairCount: 20, gateName: '中央改札', signpostedAs: '西口' },
-    { platformId: 'sendai_jr_tohoku', exitId: 'sendai_east', traversalTime: 300, stairCount: 20, gateName: '中央改札', signpostedAs: '東西自由通路・東口' },
+    // --- 東北本線（2Fの中央口改札が西口側、東口改札が東口側） TODO: 実測 ---
+    { platformId: 'sendai_jr_tohoku', exitId: 'sendai_west', traversalTime: 240, stairCount: 20, gateName: '中央口改札', signpostedAs: '西口' },
+    { platformId: 'sendai_jr_tohoku', exitId: 'sendai_east', traversalTime: 300, stairCount: 20, gateName: '東口改札', signpostedAs: '東口' },
 
     // --- 仙山線 TODO: 実測 ---
-    { platformId: 'sendai_jr_senzan', exitId: 'sendai_west', traversalTime: 270, stairCount: 20, gateName: '中央改札', signpostedAs: '西口' },
-    { platformId: 'sendai_jr_senzan', exitId: 'sendai_east', traversalTime: 330, stairCount: 20, gateName: '中央改札', signpostedAs: '東西自由通路・東口' },
+    { platformId: 'sendai_jr_senzan', exitId: 'sendai_west', traversalTime: 270, stairCount: 20, gateName: '中央口改札', signpostedAs: '西口' },
+    { platformId: 'sendai_jr_senzan', exitId: 'sendai_east', traversalTime: 330, stairCount: 20, gateName: '東口改札', signpostedAs: '東口' },
 
-    // --- 仙石線（地下ホーム。西側の地下コンコースに近い） TODO: 実測 ---
-    { platformId: 'sendai_jr_senseki', exitId: 'sendai_west', traversalTime: 300, stairCount: 0, gateName: '仙石線北改札', signpostedAs: '西口方面' },
-    { platformId: 'sendai_jr_senseki', exitId: 'sendai_east', traversalTime: 420, stairCount: 12, gateName: '仙石線南改札', signpostedAs: '東口方面' },
-    { platformId: 'sendai_jr_senseki', exitId: 'sendai_south_underground', traversalTime: 360, stairCount: 0, gateName: '仙石線南改札', signpostedAs: '地下鉄連絡通路' },
+    // --- 仙石線（B2ホーム → B1の地下改札。地上に上がらない経路が主） TODO: 実測 ---
+    { platformId: 'sendai_jr_senseki', exitId: 'sendai_west', traversalTime: 300, stairCount: 0, gateName: '地下東口改札', signpostedAs: '地下自由通路・西口方面' },
+    { platformId: 'sendai_jr_senseki', exitId: 'sendai_east', traversalTime: 420, stairCount: 12, gateName: '地下東口改札', signpostedAs: '東口' },
+    { platformId: 'sendai_jr_senseki', exitId: 'sendai_south_underground', traversalTime: 360, stairCount: 0, gateName: '地下南口', signpostedAs: '地下南口・青葉通方面' },
 
     // --- 地下鉄南北線（B3F。地下自由通路で西口側に直結） TODO: 実測 ---
     { platformId: 'sendai_subway_namboku', exitId: 'sendai_west', traversalTime: 300, stairCount: 0, gateName: '南北線北改札', signpostedAs: 'JR仙台駅・西口方面' },
@@ -525,6 +533,13 @@ export const FUNABASHI: Station = {
     },
   ],
 
+  // ------------------------------------------------------------------
+  // 構内情報の読み込み結果（Wikipedia「船橋駅」・らくらくおでかけネット、2026-08）:
+  //   - JRの改札は「中央改札」のほか「シャポー改札」(IC専用・6:30〜22:20)がある
+  //   - 東武の改札は独立（JRとの連絡改札は無い）。東武百貨店2Fに直結
+  //   - 北口・南口ともペデストリアンデッキ接続
+  //   改札・ホームの正確な階数は文字情報が無く未確認（TODO: 実測）
+  // ------------------------------------------------------------------
   legs: [
     // --- JR総武線快速 TODO: 実測 ---
     { platformId: 'funabashi_jr_sobu_rapid', exitId: 'funabashi_north', traversalTime: 240, stairCount: 18, gateName: '中央改札', signpostedAs: '北口' },
