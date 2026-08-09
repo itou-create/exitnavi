@@ -10,6 +10,7 @@ import { IKEBUKURO, STATIONS } from './data/stations'
 import { setDemoMode, usingMock } from './services/odpt'
 import { stopCompass } from './services/compass'
 import { stopStepCounter } from './services/steps'
+import { stopTurnDetector } from './services/turn'
 
 /**
  * 「この駅にいる」と自動判定してよい距離の上限。
@@ -74,6 +75,7 @@ const handlers: Handlers = {
   onGuideStep(delta: number) {
     stopCompass()
     stopStepCounter()
+    stopTurnDetector()
     const s = getState()
     const next = Math.min(Math.max(s.guideIndex + delta, 0), s.guideSteps.length - 1)
     setState({ guideIndex: next })
@@ -82,6 +84,7 @@ const handlers: Handlers = {
     // 案内をやめて結果画面へ戻る（データは保持）
     stopCompass()
     stopStepCounter()
+    stopTurnDetector()
     setState({ screen: 'result', guideArrivalNote: null })
   },
   async onCheckOutdoor() {
@@ -103,6 +106,7 @@ const handlers: Handlers = {
   onRestart() {
     stopCompass()
     stopStepCounter()
+    stopTurnDetector()
     setDemoMode(false)
     resetState()
     void start()

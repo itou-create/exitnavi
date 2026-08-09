@@ -1,4 +1,4 @@
-import type { AppState, BoardedPosition, Destination, ExitCandidate, LatLng, OriginGuess, Platform, Station } from '../types'
+import type { AppState, BoardedPosition, Destination, ExitCandidate, GuidanceDirection, LatLng, OriginGuess, Platform, Station } from '../types'
 import { DESTINATIONS, DESTINATION_RADIUS_METERS } from '../data/stations'
 import { distanceMeters } from '../services/geo'
 import { rankPlatformsForManualPick } from '../services/originGuess'
@@ -11,6 +11,7 @@ import { floorPlan } from './floorplans'
 import { bearingDegrees } from '../services/geo'
 import { startCompass } from '../services/compass'
 import { startStepCounter, STRIDE_METERS } from '../services/steps'
+import { startTurnDetector } from '../services/turn'
 
 /**
  * 描画
@@ -507,6 +508,10 @@ function guide(s: AppState, h: Handlers): HTMLElement {
   if (step.kind === 'orient' || step.kind === 'walk' || step.kind === 'gate') {
     w.appendChild(walkProgressBlock(step.distanceMeters ?? null))
   }
+  // ジャイロによる曲がり確認。方向指示のあるステップにだけ出す
+  if (step.direction) {
+    w.appendChild(turnCheckBlock(step.direction))
+  }
 
   if (!last) {
     w.appendChild(text('p', 'stepnext', `次：${s.guideSteps[s.guideIndex + 1].instruction}`))
@@ -639,6 +644,53 @@ function walkProgressBlock(targetMeters: number | null): HTMLElement {
 
   box.appendChild(note)
   box.appendChild(bar)
+  box.appendChild(btn)
+  return box
+}
+
+/**
+ * ジャイロによる曲がり確認。
+ * 絶対方位は構内で乱れるが、相対的な回転量はジャイロ由来なので構内でも使える。
+ * 「指示どおり曲がれたか」をその場で確かめられる。
+ */
+function turnCheckBlock(direction: GuidanceDirection): HTMLElement {
+  const box = el('div', 'walkbox')
+  const note = text('p', 'compassnote', 'ジャイロで「指示どおり曲がれたか」を確認できます')
+
+  const targetDeg = direction === 'u-turn' ? 150 : direction.startsWith('slight') ? 30 : 60
+  const wantRight = direction === 'right' || direction === 'slight-right'
+  const wantLeft = direction === 'left' || direction === 'slight-left'
+
+  const btn = button('ghost', '曲がりをジャイロで確認', () => {
+    void startTurnDetector((cum) => {
+      const deg = Math.round(Math.abs(cum))
+      const turned = cum > 0 ? '右' : '左'
+      if (direction === 'straight') {
+        note.textContent =
+          Math.abs(cum) < 45
+            ? `ほぼまっすぐ進めています（回転 ${turned}${deg}°）`
+            : `⚠ 直進の指示ですが、${turned}へ${deg}°曲がっています`
+        return
+      }
+      const ok =
+        direction === 'u-turn'
+          ? Math.abs(cum) >= targetDeg
+          : wantRight
+            ? cum >= targetDeg
+            : wantLeft
+              ? cum <= -targetDeg
+              : false
+      note.textContent = ok
+        ? `✓ 指示どおり曲がれました（${turned}へ${deg}°）`
+        : `いま${turned}へ${deg}°回転（指示: ${wantRight ? '右' : wantLeft ? '左' : '折り返し'}へ約${targetDeg}°以上）`
+    }).then((res) => {
+      if (res === 'denied') note.textContent = 'モーションセンサーの利用が許可されませんでした'
+      else if (res === 'unsupported') note.textContent = 'この端末ではジャイロを使えません'
+      else btn.style.display = 'none'
+    })
+  })
+
+  box.appendChild(note)
   box.appendChild(btn)
   return box
 }
