@@ -1,0 +1,17 @@
+{
+  "name": "exitnavi",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "駅の出口案内アプリ — 起点（路線・ホーム）を特定して最適な出口を出す",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.3",
+    "vite": "^5.4.10"
+  }
+}
