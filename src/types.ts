@@ -110,6 +110,12 @@ export interface ConcourseLeg {
    */
   stairsPositionRatio?: number
   /**
+   * 改札を抜けた直後の向きを基準に、目的の出口がどちらか。
+   * これが1経路1個あるだけで「改札を出たら右へ」と言い切れる。
+   * 未設定 = 未実測（方向は言わず、図で示すだけにする）。
+   */
+  gateToExitDirection?: GuidanceDirection
+  /**
    * ステップ案内（第2段階）。手書きの詳細ステップ。
    * 無ければ leg の情報から汎用ステップを自動生成する（services/guide.ts）。
    */

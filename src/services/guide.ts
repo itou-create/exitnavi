@@ -207,16 +207,29 @@ export function buildGuideSteps(
     signpostedAs: leg.signpostedAs,
   })
 
-  // 3) コンコースを歩く。「案内板に従う」ではなく行き先を主語にする。
-  //    単純な駅なら図（立体図）だけで方向が決まる。複雑な駅で方向データが
-  //    未整備の場合も、案内表示は「確認用」の位置づけに留める。
+  // 3) コンコースを歩く。「案内板に従う」ではなく行き先と方向を主語にする。
+  //    gateToExitDirection があれば「改札を出たら右へ」と言い切る。
+  //    無ければ方向は言わず、図で示す（嘘の方向を言い切らない）。
+  const g2e = leg.gateToExitDirection
+  const dirWord: Record<NonNullable<typeof g2e>, string> = {
+    straight: 'そのまま直進し',
+    left: '左へ曲がり',
+    right: '右へ曲がり',
+    'slight-left': '左ななめ前へ進み',
+    'slight-right': '右ななめ前へ進み',
+    'u-turn': '折り返して',
+  }
   steps.push({
     kind: 'walk',
-    instruction: `改札を出て、${candidate.exit.name}へ進む`,
+    direction: g2e,
+    directionBase: g2e ? '「改札を抜けた向き」が基準です' : undefined,
+    instruction: g2e
+      ? `改札を出たら${dirWord[g2e]}、${candidate.exit.name}へ`
+      : `改札を出て、${candidate.exit.name}へ進む`,
     signpostedAs: candidate.exit.signpostedAs,
     detail: isSimpleStation
       ? `出口は${station.exits.map((e) => e.name).join('と')}の2方向だけです。下の図で向きを確認してください（目安 ${fmtMin(candidate.indoorSeconds)}・暫定値）`
-      : `曲がる方向のデータは未整備です（TODO: 実測で解消予定）。目安 ${fmtMin(candidate.indoorSeconds)}（暫定値）`,
+      : `${g2e ? '方向は暫定値です。' : '曲がる方向のデータは未整備です（TODO: 実測で解消予定）。'}目安 ${fmtMin(candidate.indoorSeconds)}（暫定値）`,
   })
 
   // 4) 出口
