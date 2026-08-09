@@ -114,5 +114,18 @@ body{
 .btn.ghost{background:transparent;color:var(--ink3);border:1px solid var(--line);font-size:13px}
 .btn.ghost:hover{border-color:var(--brand);color:var(--brand)}
 
+/* ステップ案内（第2段階） */
+.stepprog{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+.stepcount{font-size:12px;font-weight:800;color:var(--ink2)}
+.stepkind{font-size:10px;font-weight:800;color:var(--brand);background:rgba(11,98,214,.08);
+  border-radius:20px;padding:3px 10px}
+.stepbar{height:6px;border-radius:3px;background:var(--bg);overflow:hidden;margin-bottom:18px}
+.stepfill{height:100%;border-radius:3px;background:var(--brand);transition:width .25s}
+.stepinst{font-size:27px;font-weight:900;letter-spacing:-.02em;line-height:1.35;margin:2px 0 6px}
+.stepdetail{font-size:13px;color:var(--ink2);margin:0 0 10px}
+.stepnext{font-size:12px;color:var(--ink3);background:var(--bg);border-radius:10px;
+  padding:9px 12px;margin:14px 0 0}
+a.btn{text-decoration:none}
+
 /* 画面下部にボタンを寄せる */
 .body>div>.btn:last-child{margin-top:auto}

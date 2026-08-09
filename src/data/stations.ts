@@ -165,7 +165,17 @@ export const IKEBUKURO: Station = {
   // ------------------------------------------------------------------
   legs: [
     // --- JR埼京線 ---
-    { platformId: 'ikebukuro_jr_saikyo', exitId: 'ikebukuro_east', traversalTime: 210, stairCount: 18, gateName: '中央改札', signpostedAs: '中央改札・東口' },
+    // steps は手書きステップ案内のサンプル。内容は未実測（TODO: 実測。
+    // 階段の位置・左右などは現地確認するまで信用しないこと）
+    {
+      platformId: 'ikebukuro_jr_saikyo', exitId: 'ikebukuro_east', traversalTime: 210, stairCount: 18, gateName: '中央改札', signpostedAs: '中央改札・東口',
+      steps: [
+        { kind: 'move', instruction: 'ホーム中ほどの階段を上がる', signpostedAs: '中央改札', detail: '約18段・エスカレーター併設（TODO: 実測）' },
+        { kind: 'gate', instruction: '中央改札を出る', signpostedAs: '中央改札' },
+        { kind: 'walk', instruction: '「東口」の案内板に従って進む', signpostedAs: '東口・サンシャインシティ方面' },
+        { kind: 'exit', instruction: '東口から地上に出る', signpostedAs: '東口' },
+      ],
+    },
     { platformId: 'ikebukuro_jr_saikyo', exitId: 'ikebukuro_west', traversalTime: 240, stairCount: 18, gateName: '中央改札', signpostedAs: '中央改札・西口' },
     { platformId: 'ikebukuro_jr_saikyo', exitId: 'ikebukuro_south', traversalTime: 270, stairCount: 22, gateName: '南改札', signpostedAs: '南改札' },
     // JRから35番出口は地下通路をかなり歩く。東口より遅くなる想定

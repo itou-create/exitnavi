@@ -82,6 +82,35 @@ export interface ConcourseLeg {
   gateName: string
   /** 途中の案内板の表記 */
   signpostedAs: string
+  /**
+   * ステップ案内（第2段階）。手書きの詳細ステップ。
+   * 無ければ leg の情報から汎用ステップを自動生成する（services/guide.ts）。
+   */
+  steps?: GuidanceStep[]
+}
+
+/** ステップ案内の1歩の種類 */
+export type GuidanceStepKind =
+  | 'move'  // 階段・エスカレーターで階を移動
+  | 'gate'  // 改札を通る
+  | 'walk'  // 案内板に従ってコンコースを歩く
+  | 'exit'  // 出口から地上へ
+
+/**
+ * ステップ案内の1歩
+ *
+ * 設計原則（CLAUDE.md 1）：現在地を測らない。
+ * 「いまどこにいるか」を描く代わりに「次に何をするか」だけを出し、
+ * ユーザーが「次へ」で進める。進行はユーザーの申告であって測位ではない。
+ */
+export interface GuidanceStep {
+  kind: GuidanceStepKind
+  /** 大きく出す指示（例: 「中央改札を出る」） */
+  instruction: string
+  /** 現地の案内板の表記（signposted_as）。指示と案内板の言葉を揃える */
+  signpostedAs?: string
+  /** 補足（例: 「約18段・エスカレーター併設」） */
+  detail?: string
 }
 
 /** 駅 */
@@ -179,6 +208,7 @@ export type ScreenId =
   | 'pickOrigin'    // 路線の選び直し
   | 'pickDest'      // 目的地の選択
   | 'result'        // 出口の算出結果
+  | 'guide'         // 改札から出口までのステップ案内（第2段階）
   | 'error'
 
 /** アプリ全体の状態 */
@@ -196,6 +226,12 @@ export interface AppState {
   originSource: OriginSource | null
   destination: Destination | null
   candidates: ExitCandidate[]
+  /** ステップ案内（第2段階）。案内中でなければ空配列 */
+  guideSteps: GuidanceStep[]
+  /** いま表示しているステップの添字 */
+  guideIndex: number
+  /** 最終ステップでの「地上に出たか」測位チェックの結果表示 */
+  guideArrivalNote: string | null
   /** モックデータで動いているか。UIに明示する（嘘の精度を出さないため） */
   usingMock: boolean
   error: string | null

@@ -19,6 +19,9 @@ const initial: AppState = {
   originSource: null,
   destination: null,
   candidates: [],
+  guideSteps: [],
+  guideIndex: 0,
+  guideArrivalNote: null,
   usingMock: false,
   error: null,
 }

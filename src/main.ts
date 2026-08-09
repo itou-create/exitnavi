@@ -2,9 +2,10 @@ import './styles.css'
 import type { Destination, OriginGuess, Platform, Station } from './types'
 import { getState, resetState, setState, subscribe } from './state'
 import { render, type Handlers } from './ui/render'
-import { getCurrentFix, nearestStations } from './services/geo'
+import { getCurrentFix, isOutdoor, nearestStations } from './services/geo'
 import { guessOrigin, isGuessUsable } from './services/originGuess'
 import { rankExits } from './services/exitPicker'
+import { buildGuideSteps } from './services/guide'
 import { IKEBUKURO, STATIONS } from './data/stations'
 import { setDemoMode, usingMock } from './services/odpt'
 
@@ -46,6 +47,43 @@ const handlers: Handlers = {
       candidates: rankExits(s.station, s.origin, destination),
       screen: 'result',
     })
+  },
+  onStartGuide() {
+    // 最上位候補の出口への案内を開始する
+    const s = getState()
+    const best = s.candidates[0]
+    if (!s.station || !s.origin || !best) return
+    setState({
+      guideSteps: buildGuideSteps(s.station, s.origin, best),
+      guideIndex: 0,
+      guideArrivalNote: null,
+      screen: 'guide',
+    })
+  },
+  onGuideStep(delta: number) {
+    const s = getState()
+    const next = Math.min(Math.max(s.guideIndex + delta, 0), s.guideSteps.length - 1)
+    setState({ guideIndex: next })
+  },
+  onGuideExit() {
+    // 案内をやめて結果画面へ戻る（データは保持）
+    setState({ screen: 'result', guideArrivalNote: null })
+  },
+  async onCheckOutdoor() {
+    // 許可されている2つ目の測位：「地上に出たか」を accuracy の改善で判定する。
+    // 判定に使った数値ごと見せる（嘘の精度を表示しない）。
+    setState({ guideArrivalNote: '測位しています…' })
+    try {
+      const fix = await getCurrentFix(6000)
+      setState({
+        accuracy: fix.accuracy,
+        guideArrivalNote: isOutdoor(fix.accuracy)
+          ? `測位精度が±${Math.round(fix.accuracy)}mに改善しました。地上に出たと判定します。`
+          : `測位精度は±${Math.round(fix.accuracy)}m。まだ屋内の可能性があります。`,
+      })
+    } catch {
+      setState({ guideArrivalNote: '位置情報を取得できませんでした。' })
+    }
   },
   onRestart() {
     setDemoMode(false)

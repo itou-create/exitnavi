@@ -4,6 +4,7 @@ import { distanceMeters } from '../services/geo'
 import { rankPlatformsForManualPick } from '../services/originGuess'
 import { explain, fmtMin, TIE_THRESHOLD_SECONDS } from '../services/exitPicker'
 import { placesSearchEnabled, searchPlaces } from '../services/places'
+import { stepKindLabel } from '../services/guide'
 
 /**
  * 描画
@@ -20,6 +21,10 @@ export interface Handlers {
   onOpenManualPick: () => void
   onPickPlatform: (platform: Platform) => void
   onPickDestination: (destination: Destination) => void
+  onStartGuide: () => void
+  onGuideStep: (delta: number) => void
+  onGuideExit: () => void
+  onCheckOutdoor: () => void
   onRestart: () => void
 }
 
@@ -35,6 +40,7 @@ export function render(root: HTMLElement, s: AppState, h: Handlers): void {
     case 'pickOrigin':  body.appendChild(pickOrigin(s, h)); break
     case 'pickDest':    body.appendChild(pickDest(s, h)); break
     case 'result':      body.appendChild(result(s, h)); break
+    case 'guide':       body.appendChild(guide(s, h)); break
     case 'error':       body.appendChild(errorView(s, h)); break
   }
   root.appendChild(body)
@@ -342,7 +348,89 @@ function result(s: AppState, h: Handlers): HTMLElement {
   w.appendChild(text('p', 'hint',
     '構内の所要時間は暫定値です（pathways.txt 未整備のため手入力）。実測に置き換えるまで参考値として扱ってください。'))
 
+  const go = button('primary', 'この出口へ案内を始める', h.onStartGuide)
+  go.appendChild(text('small', '', '改札から出口まで、1画面1指示で案内します'))
+  w.appendChild(go)
+
   w.appendChild(button('ghost', '最初にもどる', h.onRestart))
+  return w
+}
+
+/**
+ * ステップ案内（第2段階）
+ *
+ * 現在地は測らない・描かない。「次に何をするか」を1画面1指示で出し、
+ * 進行はユーザーの「次へ」で申告してもらう。
+ * 最終ステップだけ、許可されている測位（地上に出たかの判定）を任意で使える。
+ */
+function guide(s: AppState, h: Handlers): HTMLElement {
+  const w = el('div', '')
+  const step = s.guideSteps[s.guideIndex]
+  const total = s.guideSteps.length
+
+  if (!step) {
+    w.appendChild(text('h2', 'ask', 'この経路のステップ案内データがありません'))
+    w.appendChild(button('ghost', '結果にもどる', h.onGuideExit))
+    return w
+  }
+
+  w.appendChild(text('div', 'crumb',
+    `${s.origin?.name ?? ''} → ${s.candidates[0]?.exit.name ?? ''}` +
+    (s.destination ? `（${s.destination.name}方面）` : '')))
+
+  // 進捗。位置ではなく「手順の何番目か」だけを示す
+  const prog = el('div', 'stepprog')
+  prog.appendChild(text('span', 'stepcount', `ステップ ${s.guideIndex + 1} / ${total}`))
+  prog.appendChild(text('span', 'stepkind', stepKindLabel(step.kind)))
+  w.appendChild(prog)
+  const bar = el('div', 'stepbar')
+  const fill = el('div', 'stepfill')
+  fill.style.width = `${Math.round(((s.guideIndex + 1) / total) * 100)}%`
+  bar.appendChild(fill)
+  w.appendChild(bar)
+
+  // 指示本体（1画面1指示）
+  w.appendChild(text('div', 'stepinst', step.instruction))
+  if (step.detail) w.appendChild(text('p', 'stepdetail', step.detail))
+
+  if (step.signpostedAs) {
+    const sign = el('div', 'sign')
+    sign.appendChild(text('div', 's1', '目印にする案内板の表記'))
+    sign.appendChild(text('div', 's2', step.signpostedAs))
+    w.appendChild(sign)
+  }
+
+  const last = s.guideIndex === total - 1
+
+  if (!last) {
+    w.appendChild(text('p', 'stepnext', `次：${s.guideSteps[s.guideIndex + 1].instruction}`))
+  } else {
+    if (s.guideArrivalNote) w.appendChild(text('p', 'why', s.guideArrivalNote))
+    w.appendChild(button('ghost', '地上に出たか確認する（測位）', h.onCheckOutdoor))
+    if (s.destination) {
+      const exit = s.candidates[0]?.exit
+      const a = el('a', 'btn ghost')
+      a.textContent = `Googleマップで${s.destination.name}まで徒歩経路を開く`
+      a.href =
+        'https://www.google.com/maps/dir/?api=1' +
+        (exit ? `&origin=${exit.position.lat},${exit.position.lng}` : '') +
+        `&destination=${s.destination.position.lat},${s.destination.position.lng}&travelmode=walking`
+      a.target = '_blank'
+      a.rel = 'noopener'
+      w.appendChild(a)
+    }
+  }
+
+  w.appendChild(text('p', 'hint',
+    'この案内は暫定データから生成しています。実際の構内では現地の案内板を優先してください。現在地の測位はしていません。'))
+
+  if (!last) {
+    w.appendChild(button('primary', 'できた — 次へ', () => h.onGuideStep(1)))
+  } else {
+    w.appendChild(button('primary', '案内を終える', h.onRestart))
+  }
+  if (s.guideIndex > 0) w.appendChild(button('ghost', 'ひとつ戻る', () => h.onGuideStep(-1)))
+  w.appendChild(button('ghost', '案内をやめる', h.onGuideExit))
   return w
 }
 

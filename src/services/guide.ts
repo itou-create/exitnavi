@@ -1,0 +1,103 @@
+import type { ExitCandidate, GuidanceStep, Platform, Station } from '../types'
+import { fmtMin } from './exitPicker'
+
+/**
+ * 構内ステップ案内（第2段階）
+ *
+ * 設計原則（CLAUDE.md 1）：現在地を測らない。
+ *   屋内で数m粒度の測位はできない前提。「いまここ」を描く代わりに
+ *   「次に何をするか」を1画面1指示で出し、進行はユーザーの「次へ」で申告してもらう。
+ *   使ってよい測位は「地上に出たか（accuracy の急改善）」だけで、
+ *   それも最終ステップの確認ボタンに限定している（ui/render.ts + main.ts）。
+ *
+ * データについて：
+ *   leg.steps に手書きの詳細ステップがあればそれを使う。
+ *   無ければ leg の既存フィールド（改札名・階段数・案内板表記）から
+ *   汎用ステップを自動生成する。どちらも暫定データであり、UI側で
+ *   「現地の案内板を優先」と常時表示する。
+ *
+ * 将来の姿：
+ *   GTFS-Pathways の pathways.txt（stairs / escalator / fare_gate / exit の
+ *   ノード列）を経路探索した結果がそのままこのステップ列になる。
+ */
+
+export function buildGuideSteps(
+  station: Station,
+  origin: Platform,
+  candidate: ExitCandidate,
+): GuidanceStep[] {
+  const leg = station.legs.find(
+    (l) => l.platformId === origin.id && l.exitId === candidate.exit.id,
+  )
+  if (!leg) return []
+
+  // 手書きステップがあれば最優先
+  if (leg.steps && leg.steps.length > 0) return leg.steps
+
+  // --- 汎用ステップの自動生成 ---
+  const steps: GuidanceStep[] = []
+
+  // 1) 階の移動。ホームの階層から方向を決める
+  if (origin.levelIndex < 0) {
+    steps.push({
+      kind: 'move',
+      instruction: '改札のある階へ上がる',
+      signpostedAs: leg.gateName,
+      detail:
+        leg.stairCount > 0
+          ? `階段 約${leg.stairCount}段（エスカレーター併設の場合あり）`
+          : 'エスカレーター／エレベーターで上がれます',
+    })
+  } else if (origin.levelIndex > 0) {
+    steps.push({
+      kind: 'move',
+      instruction: '改札のある階へ下りる',
+      signpostedAs: leg.gateName,
+      detail:
+        leg.stairCount > 0
+          ? `階段 約${leg.stairCount}段（エスカレーター併設の場合あり）`
+          : 'エスカレーター／エレベーターで下りられます',
+    })
+  } else {
+    steps.push({
+      kind: 'move',
+      instruction: 'ホームから改札方面へ進む',
+      signpostedAs: leg.gateName,
+      detail: leg.stairCount > 0 ? `途中に階段 約${leg.stairCount}段` : undefined,
+    })
+  }
+
+  // 2) 改札
+  steps.push({
+    kind: 'gate',
+    instruction: `${leg.gateName}を出る`,
+    signpostedAs: leg.signpostedAs,
+  })
+
+  // 3) コンコースを歩く
+  steps.push({
+    kind: 'walk',
+    instruction: `案内板「${candidate.exit.signpostedAs}」に従って進む`,
+    signpostedAs: candidate.exit.signpostedAs,
+    detail: `ホームからの目安 ${fmtMin(candidate.indoorSeconds)}（暫定値）`,
+  })
+
+  // 4) 出口
+  steps.push({
+    kind: 'exit',
+    instruction: `${candidate.exit.name}から地上に出る`,
+    signpostedAs: candidate.exit.signpostedAs,
+  })
+
+  return steps
+}
+
+/** ステップ種類の表示ラベル */
+export function stepKindLabel(kind: GuidanceStep['kind']): string {
+  switch (kind) {
+    case 'move': return '階の移動'
+    case 'gate': return '改札'
+    case 'walk': return 'コンコース'
+    case 'exit': return '出口'
+  }
+}
