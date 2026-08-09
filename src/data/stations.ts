@@ -1,4 +1,4 @@
-import type { Station, Destination } from '../types'
+﻿import type { Station, Destination } from '../types'
 
 /**
  * 駅データ
@@ -32,6 +32,7 @@ export const IKEBUKURO: Station = {
       operator: 'JR東日本',
       line: '埼京線',
       odptRailway: 'odpt.Railway:JR-East.SaikyoLine',
+      platformEnds: { a: '赤羽・大宮寄り', b: '新宿寄り' }, // TODO: 実測（現地の乗車位置案内の言葉に合わせる）
       levelIndex: 0,
       color: '#00ac9a',
     },
@@ -42,6 +43,7 @@ export const IKEBUKURO: Station = {
       operator: 'JR東日本',
       line: '山手線',
       odptRailway: 'odpt.Railway:JR-East.Yamanote',
+      platformEnds: { a: '大塚・田端寄り', b: '目白・新宿寄り' }, // TODO: 実測
       levelIndex: 0,
       color: '#9acd32',
     },
@@ -169,7 +171,9 @@ export const IKEBUKURO: Station = {
     // 階段の位置・左右などは現地確認するまで信用しないこと）
     {
       platformId: 'ikebukuro_jr_saikyo', exitId: 'ikebukuro_east', traversalTime: 210, stairCount: 18, gateName: '中央改札', signpostedAs: '中央改札・東口',
+      stairsPositionRatio: 0.5, // TODO: 実測
       steps: [
+        { kind: 'orient', instruction: '電車を降りたら、ホーム中ほどの階段へ', signpostedAs: '中央改札', detail: '乗車位置によっては進行方向を戻る形になります（TODO: 実測）' },
         { kind: 'move', instruction: 'ホーム中ほどの階段を上がる', signpostedAs: '中央改札', detail: '約18段・エスカレーター併設（TODO: 実測）' },
         { kind: 'gate', instruction: '中央改札を出る', signpostedAs: '中央改札' },
         { kind: 'walk', instruction: '「東口」の案内板に従って進む', signpostedAs: '東口・サンシャインシティ方面' },
@@ -278,6 +282,7 @@ export const SENDAI: Station = {
       line: '仙石線',
       odptRailway: 'odpt.Railway:JR-East.Senseki',
       trainLocationAvailable: false,
+      platformEnds: { a: 'あおば通寄り', b: '榴ケ岡・石巻寄り' }, // TODO: 実測
       levelIndex: -2, // 地下2階 TODO: 実測
       color: '#00aeef',
     },
@@ -289,6 +294,7 @@ export const SENDAI: Station = {
       line: '南北線',
       odptRailway: 'odpt.Railway:SendaiCity.Namboku', // 仮ID（ODPT未登録）
       trainLocationAvailable: false, // 仙台市交通局の ODPT 提供はバスのみ
+      platformEnds: { a: '泉中央寄り', b: '富沢寄り' }, // TODO: 実測
       levelIndex: -3, // 地下3階
       color: '#109e49',
     },
@@ -300,6 +306,7 @@ export const SENDAI: Station = {
       line: '東西線',
       odptRailway: 'odpt.Railway:SendaiCity.Tozai', // 仮ID（ODPT未登録）
       trainLocationAvailable: false,
+      platformEnds: { a: '八木山動物公園寄り', b: '荒井寄り' }, // TODO: 実測
       levelIndex: -4, // 地下4階
       color: '#0072bc',
     },
@@ -383,6 +390,7 @@ export const ROKUCHONOME: Station = {
       line: '東西線',
       odptRailway: 'odpt.Railway:SendaiCity.Tozai', // 仮ID（ODPT未登録）
       trainLocationAvailable: false,
+      platformEnds: { a: '八木山動物公園寄り', b: '荒井寄り' }, // TODO: 実測
       levelIndex: -3, // 地下3階 TODO: 実測
       color: '#0072bc',
     },
@@ -437,6 +445,7 @@ export const FUNABASHI: Station = {
       operator: 'JR東日本',
       line: '総武線快速',
       odptRailway: 'odpt.Railway:JR-East.SobuRapid',
+      platformEnds: { a: '東京・横浜寄り', b: '千葉寄り' }, // TODO: 実測
       levelIndex: 1, // 高架
       color: '#0074be',
     },
@@ -447,6 +456,7 @@ export const FUNABASHI: Station = {
       operator: 'JR東日本',
       line: '中央・総武線各駅停車',
       odptRailway: 'odpt.Railway:JR-East.ChuoSobuLocal',
+      platformEnds: { a: '中野・新宿寄り', b: '千葉寄り' }, // TODO: 実測
       levelIndex: 1,
       color: '#ffd400',
     },

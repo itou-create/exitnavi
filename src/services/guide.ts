@@ -37,6 +37,20 @@ export function buildGuideSteps(
   // --- 汎用ステップの自動生成 ---
   const steps: GuidanceStep[] = []
 
+  // 0) 降車直後。まず「どっちへ歩くか」を決めさせる。
+  //    乗っていた車両位置は測れないので、階段のホーム上の位置だけを示す。
+  const hasStairsPos = leg.stairsPositionRatio != null
+  steps.push({
+    kind: 'orient',
+    instruction: hasStairsPos
+      ? `電車を降りたら、${stairsPositionLabel(leg.stairsPositionRatio, origin)}の階段へ`
+      : `電車を降りたら、「${leg.gateName}」の案内表示を探す`,
+    signpostedAs: leg.gateName,
+    detail: hasStairsPos
+      ? 'ホームの図で階段の位置を確認してください（暫定データ）'
+      : '階段の位置は未実測のため、ホーム上の吊り下げ案内に従ってください',
+  })
+
   // 1) 階の移動。ホームの階層から方向を決める
   if (origin.levelIndex < 0) {
     steps.push({
@@ -95,9 +109,26 @@ export function buildGuideSteps(
 /** ステップ種類の表示ラベル */
 export function stepKindLabel(kind: GuidanceStep['kind']): string {
   switch (kind) {
+    case 'orient': return '降車直後'
     case 'move': return '階の移動'
     case 'gate': return '改札'
     case 'walk': return 'コンコース'
     case 'exit': return '出口'
   }
+}
+
+/**
+ * 階段のホーム上の位置を言葉にする。
+ * 「新宿寄り」のような現地の乗車位置案内と同じ語彙を使う。
+ * 未実測なら未実測と言う（勝手に「中ほど」と言い切らない）。
+ */
+export function stairsPositionLabel(
+  ratio: number | undefined,
+  platform: { platformEnds?: { a: string; b: string } },
+): string {
+  if (ratio == null) return '「位置未実測」'
+  const ends = platform.platformEnds
+  if (ratio < 0.33) return ends ? `${ends.a}側` : 'ホーム端寄り'
+  if (ratio > 0.67) return ends ? `${ends.b}側` : 'ホーム端寄り'
+  return 'ホーム中ほど'
 }

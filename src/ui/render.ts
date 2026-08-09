@@ -5,6 +5,7 @@ import { rankPlatformsForManualPick } from '../services/originGuess'
 import { explain, fmtMin, TIE_THRESHOLD_SECONDS } from '../services/exitPicker'
 import { placesSearchEnabled, searchPlaces } from '../services/places'
 import { stepKindLabel } from '../services/guide'
+import { platformDiagram, stationDiagram } from './diagram'
 
 /**
  * 描画
@@ -337,6 +338,12 @@ function result(s: AppState, h: Handlers): HTMLElement {
 
   w.appendChild(text('p', 'why', explain(best, s.candidates[1], s.origin!)))
 
+  // 駅の俯瞰模式図。目指す出口と目的地の方角を一目で
+  if (s.station) {
+    w.appendChild(stationDiagram(s.station, best.exit, best.gateName, s.destination))
+    w.appendChild(text('p', 'dgcap', '駅の俯瞰模式図(北が上)。出口の位置は暫定座標から描いています。'))
+  }
+
   if (s.candidates.length > 1) {
     const cmp = el('div', 'compare')
     cmp.appendChild(text('div', 'evtitle', 'ほかの出口'))
@@ -398,6 +405,22 @@ function guide(s: AppState, h: Handlers): HTMLElement {
     sign.appendChild(text('div', 's1', '目印にする案内板の表記'))
     sign.appendChild(text('div', 's2', step.signpostedAs))
     w.appendChild(sign)
+  }
+
+  // 図面（模式図）。ステップの局面に合わせて出し分ける
+  const best = s.candidates[0]
+  const leg =
+    s.station && s.origin && best
+      ? s.station.legs.find((l) => l.platformId === s.origin!.id && l.exitId === best.exit.id)
+      : undefined
+  if (step.kind === 'orient' || step.kind === 'move') {
+    if (s.origin && leg) {
+      w.appendChild(platformDiagram(s.origin, leg))
+      w.appendChild(text('p', 'dgcap', 'ホームの模式図です。縮尺はありません。あなたの現在位置は測っていないため描いていません。'))
+    }
+  } else if (s.station && best) {
+    w.appendChild(stationDiagram(s.station, best.exit, leg?.gateName ?? null, step.kind === 'exit' ? s.destination : null))
+    w.appendChild(text('p', 'dgcap', '駅の俯瞰模式図（北が上）。出口の位置は暫定座標から描いています。'))
   }
 
   const last = s.guideIndex === total - 1

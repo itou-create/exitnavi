@@ -43,6 +43,12 @@ export interface Platform {
   levelIndex: number
   /** 路線カラー（UI用） */
   color: string
+  /**
+   * ホーム両端の方面表記（ホーム模式図用）。
+   * a = 図面の左端、b = 右端。「◯◯寄り」の言い方に使う。
+   * 現地の乗車位置案内と同じ言葉にすること。
+   */
+  platformEnds?: { a: string; b: string }
 }
 
 /** 駅の出入口（GTFS stops.txt の location_type = 2） */
@@ -83,6 +89,12 @@ export interface ConcourseLeg {
   /** 途中の案内板の表記 */
   signpostedAs: string
   /**
+   * この経路で最初に使う階段/エスカレーターの、ホーム上の位置。
+   * 0 = platformEnds.a の端、1 = b の端、0.5 = 中ほど。
+   * 未設定 = 未実測（図面には「位置は未実測」と正直に描く）。
+   */
+  stairsPositionRatio?: number
+  /**
    * ステップ案内（第2段階）。手書きの詳細ステップ。
    * 無ければ leg の情報から汎用ステップを自動生成する（services/guide.ts）。
    */
@@ -91,10 +103,11 @@ export interface ConcourseLeg {
 
 /** ステップ案内の1歩の種類 */
 export type GuidanceStepKind =
-  | 'move'  // 階段・エスカレーターで階を移動
-  | 'gate'  // 改札を通る
-  | 'walk'  // 案内板に従ってコンコースを歩く
-  | 'exit'  // 出口から地上へ
+  | 'orient' // 降車直後。階段の位置と進む向きを確かめる
+  | 'move'   // 階段・エスカレーターで階を移動
+  | 'gate'   // 改札を通る
+  | 'walk'   // 案内板に従ってコンコースを歩く
+  | 'exit'   // 出口から地上へ
 
 /**
  * ステップ案内の1歩
