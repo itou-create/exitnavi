@@ -39,6 +39,7 @@ export const IKEBUKURO: Station = {
       platformEnds: { a: '赤羽・大宮寄り', b: '新宿寄り' }, // TODO: 実測（現地の乗車位置案内の言葉に合わせる）
       // 行先 → 走り去る側の端。「電車が走り去った方向へ」案内の材料
       directionEnds: { Omiya: 'a', Kawagoe: 'a', Osaki: 'b', Shinjuku: 'b', Ebisu: 'b' },
+      platformType: 'island', // 3・4番線の島式
       levelIndex: 0,
       color: '#00ac9a',
     },
@@ -51,6 +52,7 @@ export const IKEBUKURO: Station = {
       odptRailway: 'odpt.Railway:JR-East.Yamanote',
       platformEnds: { a: '大塚・田端寄り', b: '目白・新宿寄り' }, // TODO: 実測
       directionEnds: { Osaki: 'b', Shinjuku: 'b', Tabata: 'a', Ueno: 'a' },
+      platformType: 'island',
       levelIndex: 0,
       color: '#9acd32',
     },
@@ -297,6 +299,7 @@ export const SENDAI: Station = {
       odptRailway: 'odpt.Railway:JR-East.Senseki',
       trainLocationAvailable: false,
       platformEnds: { a: 'あおば通寄り', b: '榴ケ岡・石巻寄り' }, // TODO: 実測
+      platformType: 'island', // 1面2線
       levelIndex: -2, // 地下2階 TODO: 実測
       color: '#00aeef',
     },
@@ -310,6 +313,7 @@ export const SENDAI: Station = {
       trainLocationAvailable: false, // 仙台市交通局の ODPT 提供はバスのみ
       platformEnds: { a: '泉中央寄り', b: '富沢寄り' }, // TODO: 実測
       directionEnds: { IzumiChuo: 'a', Tomizawa: 'b' },
+      platformType: 'island', // 1面2線
       levelIndex: -3, // 地下3階
       color: '#109e49',
     },
@@ -323,6 +327,7 @@ export const SENDAI: Station = {
       trainLocationAvailable: false,
       platformEnds: { a: '八木山動物公園寄り', b: '荒井寄り' }, // TODO: 実測
       directionEnds: { Arai: 'b', YagiyamaZoologicalPark: 'a' },
+      platformType: 'island', // 1面2線
       levelIndex: -4, // 地下4階
       color: '#0072bc',
     },
@@ -411,6 +416,7 @@ export const ROKUCHONOME: Station = {
       trainLocationAvailable: false,
       platformEnds: { a: '八木山動物公園寄り', b: '荒井寄り' }, // TODO: 実測
       directionEnds: { Arai: 'b', YagiyamaZoologicalPark: 'a' },
+      platformType: 'island', // 1面2線
       levelIndex: -3, // 地下3階 TODO: 実測
       color: '#0072bc',
     },
@@ -470,6 +476,7 @@ export const FUNABASHI: Station = {
       odptRailway: 'odpt.Railway:JR-East.SobuRapid',
       platformEnds: { a: '東京・横浜寄り', b: '千葉寄り' }, // TODO: 実測
       directionEnds: { Kurihama: 'a', Zushi: 'a', Tokyo: 'a', Chiba: 'b' },
+      platformType: 'island',
       levelIndex: 1, // 高架
       color: '#0074be',
     },
@@ -482,6 +489,7 @@ export const FUNABASHI: Station = {
       odptRailway: 'odpt.Railway:JR-East.ChuoSobuLocal',
       platformEnds: { a: '中野・新宿寄り', b: '千葉寄り' }, // TODO: 実測
       directionEnds: { Nakano: 'a', Mitaka: 'a', Chiba: 'b', Tsudanuma: 'b' },
+      platformType: 'island',
       levelIndex: 1,
       color: '#ffd400',
     },

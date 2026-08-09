@@ -56,6 +56,14 @@ export interface Platform {
    * 言葉で案内するために使う（利用者目線の降車直後案内の要）。
    */
   directionEnds?: Record<string, 'a' | 'b'>
+  /**
+   * ホームの形式。降車時にどちら側のドアが開くかが決まる事実データ。
+   *   island（島式・線路に挟まれる）= 左側通行なので進行方向の右側ドアが開く
+   *   side（相対式）= 進行方向の左側ドアが開く
+   * これがあると「電車を背にして右／左へ」まで言い切れる。
+   * 両側扉扱いなど例外のある駅では設定しない（TODO: 現地確認）。
+   */
+  platformType?: 'island' | 'side'
 }
 
 /** 駅の出入口（GTFS stops.txt の location_type = 2） */

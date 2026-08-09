@@ -85,6 +85,27 @@ function personalizedOrient(
   const sameAsTravel = walkTowardEnd === travelEnd
   const howFar = dist >= 0.5 ? 'ホームをしばらく歩きます' : '少し歩きます'
 
+  // ホーム形式が分かれば「電車を背にして右／左」まで言い切れる。
+  // 左側通行のため、島式ホームでは進行方向右側のドアが開く。
+  // 「電車を背にして立つ」= 開いたドアの向きを向いて立つ、なので：
+  //   島式（右ドア）で進行方向側へ歩く → 左、逆へ歩く → 右
+  //   相対式（左ドア）はその反転
+  const doorSide =
+    origin.platformType === 'island' ? 'right' : origin.platformType === 'side' ? 'left' : null
+
+  if (doorSide) {
+    const leftRight: 'left' | 'right' =
+      (doorSide === 'right') === sameAsTravel ? 'left' : 'right'
+    return {
+      kind: 'orient',
+      direction: leftRight,
+      directionBase: '「降りた電車を背にした向き」が基準です',
+      instruction: `電車を背にして、${leftRight === 'left' ? '左' : '右'}へ進む`,
+      detail: `${howFar}。階段は${stairsPositionLabel(leg.stairsPositionRatio, origin)}（暫定データ）`,
+      signpostedAs: leg.gateName,
+    }
+  }
+
   return {
     kind: 'orient',
     direction: sameAsTravel ? 'straight' : 'u-turn',
