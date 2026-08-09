@@ -53,6 +53,17 @@ export function getCurrentFix(timeoutMs = 8000): Promise<Fix> {
   })
 }
 
+/** a から b への方位角（度、北=0・時計回り）。コンパス矢印に使う */
+export function bearingDegrees(a: LatLng, b: LatLng): number {
+  const toRad = (d: number) => (d * Math.PI) / 180
+  const dLng = toRad(b.lng - a.lng)
+  const y = Math.sin(dLng) * Math.cos(toRad(b.lat))
+  const x =
+    Math.cos(toRad(a.lat)) * Math.sin(toRad(b.lat)) -
+    Math.sin(toRad(a.lat)) * Math.cos(toRad(b.lat)) * Math.cos(dLng)
+  return ((Math.atan2(y, x) * 180) / Math.PI + 360) % 360
+}
+
 /** 2点間の距離（m）。Haversine */
 export function distanceMeters(a: LatLng, b: LatLng): number {
   const R = 6_371_000

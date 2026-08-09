@@ -1,4 +1,4 @@
-import type { AppState, BoardedPosition, Destination, ExitCandidate, OriginGuess, Platform, Station } from '../types'
+import type { AppState, BoardedPosition, Destination, ExitCandidate, LatLng, OriginGuess, Platform, Station } from '../types'
 import { DESTINATIONS, DESTINATION_RADIUS_METERS } from '../data/stations'
 import { distanceMeters } from '../services/geo'
 import { rankPlatformsForManualPick } from '../services/originGuess'
@@ -8,6 +8,8 @@ import { directionDisplay, stepKindLabel } from '../services/guide'
 import { platformDiagram } from './diagram'
 import { stationMap } from './map'
 import { floorPlan } from './floorplans'
+import { bearingDegrees } from '../services/geo'
+import { startCompass } from '../services/compass'
 
 /**
  * 描画
@@ -507,6 +509,8 @@ function guide(s: AppState, h: Handlers): HTMLElement {
     w.appendChild(button('ghost', '地上に出たか確認する（測位）', h.onCheckOutdoor))
     if (s.destination) {
       const exit = s.candidates[0]?.exit
+      // 地上に出た後の「で、どっち？」に、端末の向きに追随する矢印で答える
+      if (exit) w.appendChild(compassBlock(exit.position, s.destination))
       const a = el('a', 'btn ghost')
       a.textContent = `Googleマップで${s.destination.name}まで徒歩経路を開く`
       a.href =
@@ -588,6 +592,41 @@ function button(cls: string, label: string, onClick: () => void): HTMLElement {
   b.appendChild(text('span', '', label))
   b.addEventListener('click', onClick)
   return b
+}
+
+/**
+ * コンパス。目的地の方角を、端末の向きに追随する矢印で示す。
+ * 屋内では磁気が乱れるため、地上に出る最終ステップ限定で表示している。
+ * センサーの目安であることを常に明記する（嘘の精度を出さない）。
+ */
+function compassBlock(from: LatLng, destination: Destination): HTMLElement {
+  const box = el('div', 'compassbox')
+  const dial = el('div', 'compassdial')
+  const needle = el('div', 'compassneedle')
+  needle.textContent = '⬆'
+  dial.appendChild(needle)
+  const note = text('p', 'compassnote',
+    '地上に出てからボタンを押すと、矢印が目的地の方角を指します（磁気センサーの目安）')
+
+  const btn = button('ghost', 'コンパスで方角を示す（屋外で）', () => {
+    const bearing = bearingDegrees(from, destination.position)
+    void startCompass((heading) => {
+      needle.style.transform = `rotate(${(bearing - heading + 360) % 360}deg)`
+    }).then((res) => {
+      if (res === 'ok') {
+        note.textContent = `矢印が「${destination.name}」の方角です（目安。屋内・改札内では狂います）`
+      } else if (res === 'denied') {
+        note.textContent = '方位センサーの利用が許可されませんでした'
+      } else {
+        note.textContent = 'この端末では方位センサーを使えません'
+      }
+    })
+  })
+
+  box.appendChild(dial)
+  box.appendChild(note)
+  box.appendChild(btn)
+  return box
 }
 
 /** 外部リンクをボタンの見た目で開く（新しいタブ） */
