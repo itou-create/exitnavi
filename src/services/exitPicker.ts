@@ -1,5 +1,6 @@
 import type { Destination, ExitCandidate, Platform, Station } from '../types'
 import { distanceMeters } from './geo'
+import { findPath, pathSeconds } from './pathfinder'
 
 /**
  * 出口の算出
@@ -47,11 +48,18 @@ export function rankExits(
     const meters = distanceMeters(exit.position, destination.position) * DETOUR_FACTOR
     const outdoorSeconds = Math.round(meters / WALK_SPEED)
 
+    // 構内ネットワークが整備済みなら、経路探索の合計秒数を使う（区間実測が反映される）
+    let indoorSeconds = leg.traversalTime
+    if (station.pathNodes?.length && origin.nodeId && exit.nodeId) {
+      const path = findPath(station, origin.nodeId, exit.nodeId)
+      if (path && path.length > 0) indoorSeconds = pathSeconds(path)
+    }
+
     return [{
       exit,
-      indoorSeconds: leg.traversalTime,
+      indoorSeconds,
       outdoorSeconds,
-      totalSeconds: leg.traversalTime + outdoorSeconds,
+      totalSeconds: indoorSeconds + outdoorSeconds,
       outdoorMeters: Math.round(meters),
       stairCount: leg.stairCount,
       gateName: leg.gateName,

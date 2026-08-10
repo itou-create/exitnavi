@@ -35,6 +35,24 @@ export interface CommunityRoute {
 /** 提供された実測データの集約。現在 0 経路（提供が集まり次第ここに追記） */
 export const COMMUNITY_MEASURES: CommunityRoute[] = []
 
+/**
+ * エッジ（構内ネットワークの区間）単位の集約。
+ * どの経路の歩行記録からでも、同じ区間の実測はここに合算される。
+ */
+export interface CommunityEdge {
+  edgeId: string
+  samples: number
+  sec?: number
+  steps?: number
+}
+
+/** 提供された実測のエッジ単位集約。現在 0 件 */
+export const COMMUNITY_EDGES: CommunityEdge[] = []
+
+export function communityEdgeFor(edgeId: string): CommunityEdge | null {
+  return COMMUNITY_EDGES.find((e) => e.edgeId === edgeId) ?? null
+}
+
 export function communityRouteFor(
   stationId: string,
   platformId: string,

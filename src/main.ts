@@ -12,7 +12,7 @@ import { stopCompass } from './services/compass'
 import { startStepCounter, stopStepCounter } from './services/steps'
 import { startTurnDetector, stopTurnDetector } from './services/turn'
 import * as telemetry from './services/telemetry'
-import { communityRouteFor } from './data/measured'
+import { communityEdgeFor, communityRouteFor } from './data/measured'
 
 /**
  * 「この駅にいる」と自動判定してよい距離の上限。
@@ -85,10 +85,20 @@ function engageAuto(): void {
   let learnedLabel = ''
   const best = s.candidates[0]
   if (distTarget == null && stairTarget == null && !isLast && s.station && s.origin && best) {
+    // 優先1: エッジ（区間）単位の実測。別の出口へ歩いた記録でも同じ区間なら効く
+    const edgeLocal = step.edgeId ? telemetry.localEdgeProfile(step.edgeId) : null
+    const edgeCommunity = step.edgeId ? communityEdgeFor(step.edgeId) : null
+    // 優先2: 経路×ステップ位置の実測（ネットワーク未整備の駅向け）
     const local = telemetry.localStepProfile(
       s.station.id, s.origin.id, best.exit.id, s.guideIndex, step.kind,
     )
-    if (local.samples >= 2 && local.medianSteps != null && local.medianSteps >= 5) {
+    if (edgeLocal && edgeLocal.samples >= 2 && edgeLocal.medianSteps != null && edgeLocal.medianSteps >= 5) {
+      learnedTarget = Math.max(4, Math.ceil(edgeLocal.medianSteps * 0.9))
+      learnedLabel = `この区間のあなたの実測${edgeLocal.samples}回`
+    } else if (edgeCommunity && edgeCommunity.steps != null && edgeCommunity.steps >= 5) {
+      learnedTarget = Math.max(4, Math.ceil(edgeCommunity.steps * 0.9))
+      learnedLabel = `この区間のみんなの実測${edgeCommunity.samples}件`
+    } else if (local.samples >= 2 && local.medianSteps != null && local.medianSteps >= 5) {
       learnedTarget = Math.max(4, Math.ceil(local.medianSteps * 0.9))
       learnedLabel = `あなたの実測${local.samples}回`
     } else {

@@ -56,6 +56,8 @@ export interface Platform {
    * 言葉で案内するために使う（利用者目線の降車直後案内の要）。
    */
   directionEnds?: Record<string, 'a' | 'b'>
+  /** 構内ネットワーク上の対応ノード（pathNodes 整備済みの駅のみ） */
+  nodeId?: string
   /**
    * ホームの形式。降車時にどちら側のドアが開くかが決まる事実データ。
    *   island（島式・線路に挟まれる）= 左側通行なので進行方向の右側ドアが開く
@@ -70,6 +72,8 @@ export interface Platform {
 export interface Exit {
   id: string
   stationId: string
+  /** 構内ネットワーク上の対応ノード（pathNodes 整備済みの駅のみ） */
+  nodeId?: string
   /** 表示名（例: "東口"） */
   name: string
   /**
@@ -172,10 +176,44 @@ export interface GuidanceStep {
   distanceMeters?: number
   /** 階段の段数（move ステップ用）。自動判定の「上りきり」検知に使う */
   stairCount?: number
+  /** 構内ネットワークのエッジID。実測を区間単位で蓄積するためのキー */
+  edgeId?: string
   /** 現地の案内板の表記（signposted_as）。答え合わせ（確認）用 */
   signpostedAs?: string
   /** 補足（例: 「約18段・エスカレーター併設」） */
   detail?: string
+}
+
+/**
+ * 構内ネットワークのノード（GTFS-Pathways のノードに相当）。
+ * 下車ホーム・階段・改札・分岐・出口を点として持つ。
+ */
+export interface PathNode {
+  id: string
+  kind: 'platform' | 'gate' | 'junction' | 'exit'
+  name: string
+  levelIndex: number
+}
+
+/**
+ * 構内ネットワークのエッジ（区間）。
+ * 経路はエッジ列として探索され、実測（歩数・秒数）もエッジ単位で蓄積される。
+ * 共通区間（例: ホーム→改札）の実測は、その区間を通る全パターンの精度に効く。
+ */
+export interface PathEdge {
+  id: string
+  from: string
+  to: string
+  kind: 'walk' | 'stairs-up' | 'stairs-down' | 'escalator' | 'gate-pass'
+  /** 所要秒数（暫定。実測で置き換わる） */
+  traversalSec: number
+  distanceMeters?: number
+  stairCount?: number
+  /** 直前のエッジを抜けた向き基準の進行方向 */
+  direction?: GuidanceDirection
+  signpostedAs?: string
+  /** 注意（らせん階段など） */
+  note?: string
 }
 
 /** 駅 */
@@ -197,6 +235,9 @@ export interface Station {
   platforms: Platform[]
   exits: Exit[]
   legs: ConcourseLeg[]
+  /** 構内ネットワーク（整備済みの駅のみ）。あればステップ生成は経路探索で行う */
+  pathNodes?: PathNode[]
+  pathEdges?: PathEdge[]
 }
 
 /** 目的地 */

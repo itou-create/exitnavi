@@ -1,5 +1,6 @@
-import type { ArrivedTrain, BoardedPosition, ExitCandidate, GuidanceStep, Platform, Station } from '../types'
+import type { ArrivedTrain, BoardedPosition, ConcourseLeg, ExitCandidate, GuidanceStep, Platform, Station } from '../types'
 import { fmtMin } from './exitPicker'
+import { findPath, stepsFromPath } from './pathfinder'
 
 /**
  * 構内ステップ案内（第2段階）
@@ -142,6 +143,17 @@ export function buildGuideSteps(
     return leg.steps
   }
 
+  // 構内ネットワークが整備済みなら、経路探索でステップを生成する。
+  // 下車→改札→出口の区間（エッジ）が共有されるため、
+  // 実測が「その区間を通る全パターン」の精度に効く。
+  if (station.pathNodes?.length && station.pathEdges?.length && origin.nodeId && candidate.exit.nodeId) {
+    const path = findPath(station, origin.nodeId, candidate.exit.nodeId)
+    if (path && path.length > 0) {
+      const orient = personal ?? genericOrientStep(station, origin, leg)
+      return [orient, ...stepsFromPath(station, path)]
+    }
+  }
+
   // --- 汎用ステップの自動生成 ---
   const steps: GuidanceStep[] = []
 
@@ -151,23 +163,7 @@ export function buildGuideSteps(
   const isSimpleStation = gateCount === 1 && station.exits.length <= 2
 
   // 0) 降車直後。個別化できなくても「探させる」案内にはしない。
-  const hasStairsPos = leg.stairsPositionRatio != null
-  steps.push(
-    personal ?? {
-      kind: 'orient',
-      instruction: hasStairsPos
-        ? `電車を降りたら、${stairsPositionLabel(leg.stairsPositionRatio, origin)}の階段へ`
-        : isSimpleStation
-          ? '電車を降りたら、いちばん近い階段へ'
-          : `電車を降りたら、${leg.gateName}方面の階段へ`,
-      signpostedAs: leg.gateName,
-      detail: hasStairsPos
-        ? 'ホームの図で階段の位置を確認してください（暫定データ）'
-        : isSimpleStation
-          ? 'この駅の改札は1か所だけです。どの階段・エスカレーターを上がっても必ず改札に着きます'
-          : '階段のホーム上の位置は未実測です（TODO: 実測で解消予定）',
-    },
-  )
+  steps.push(personal ?? genericOrientStep(station, origin, leg))
 
   // 1) 階の移動。ホームの階層から方向を決める
   if (origin.levelIndex < 0) {
@@ -253,6 +249,27 @@ export function directionDisplay(d: NonNullable<GuidanceStep['direction']>): { a
     case 'slight-left':  return { arrow: '↖', label: '左ななめ前へ' }
     case 'slight-right': return { arrow: '↗', label: '右ななめ前へ' }
     case 'u-turn':       return { arrow: '↩', label: '折り返す' }
+  }
+}
+
+/** 降車直後の汎用ステップ（個別化できないときの共通ロジック） */
+function genericOrientStep(station: Station, origin: Platform, leg: ConcourseLeg): GuidanceStep {
+  const gateCount = new Set(station.legs.map((l) => l.gateName)).size
+  const isSimpleStation = gateCount === 1 && station.exits.length <= 2
+  const hasStairsPos = leg.stairsPositionRatio != null
+  return {
+    kind: 'orient',
+    instruction: hasStairsPos
+      ? `電車を降りたら、${stairsPositionLabel(leg.stairsPositionRatio, origin)}の階段へ`
+      : isSimpleStation
+        ? '電車を降りたら、いちばん近い階段へ'
+        : `電車を降りたら、${leg.gateName}方面の階段へ`,
+    signpostedAs: leg.gateName,
+    detail: hasStairsPos
+      ? 'ホームの図で階段の位置を確認してください（暫定データ）'
+      : isSimpleStation
+        ? 'この駅の改札は1か所だけです。どの階段・エスカレーターを上がっても必ず改札に着きます'
+        : '階段のホーム上の位置は未実測です（TODO: 実測で解消予定）',
   }
 }
 

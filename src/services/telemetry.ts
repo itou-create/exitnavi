@@ -24,6 +24,8 @@ export interface StepMeasure {
   turnDeg?: number
   /** このステップの目安距離（歩幅キャリブレーションに使う） */
   targetMeters?: number
+  /** 構内ネットワークのエッジID。区間単位の集計キー */
+  edgeId?: string
 }
 
 export interface RouteMeasure {
@@ -98,6 +100,7 @@ function closeCurrentStep(): void {
     walkSteps: rec.sensors.walkSteps,
     turnDeg: rec.sensors.turnDeg != null ? Math.round(rec.sensors.turnDeg) : undefined,
     targetMeters: rec.currentStep.distanceMeters,
+    edgeId: rec.currentStep.edgeId,
   })
 }
 
@@ -176,6 +179,22 @@ export function localStepProfile(
   const list = measuresFor(stationId, platformId, exitId)
     .map((m) => m.steps[stepIndex])
     .filter((st): st is StepMeasure => !!st && st.kind === kind)
+  return {
+    medianSec: median(list.map((st) => st.elapsedSec)),
+    medianSteps: median(list.filter((st) => st.walkSteps != null).map((st) => st.walkSteps!)),
+    samples: list.length,
+  }
+}
+
+/**
+ * エッジ（構内ネットワークの区間）単位の実測プロファイル。
+ * どの経路で歩いたかに関係なく、同じ区間の実測がすべて集まる。
+ * これが「下車→A改札→B出口の色々なパターンで精度が出る」の中核:
+ * 例) ホーム→改札 区間の実測は、北1行きでも南1行きでも共有される。
+ */
+export function localEdgeProfile(edgeId: string): StepProfile {
+  const list: StepMeasure[] = []
+  loadAll().forEach((m) => m.steps.forEach((st) => { if (st.edgeId === edgeId) list.push(st) }))
   return {
     medianSec: median(list.map((st) => st.elapsedSec)),
     medianSteps: median(list.filter((st) => st.walkSteps != null).map((st) => st.walkSteps!)),

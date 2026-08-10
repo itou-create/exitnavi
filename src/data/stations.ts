@@ -425,9 +425,35 @@ export const ROKUCHONOME: Station = {
       platformEnds: { a: '八木山動物公園寄り', b: '荒井寄り' }, // TODO: 実測
       directionEnds: { Arai: 'b', YagiyamaZoologicalPark: 'a' },
       platformType: 'island', // 1面2線
+      nodeId: 'rk_home',
       levelIndex: -3, // 地下3階 TODO: 実測
       color: '#0072bc',
     },
+  ],
+
+  // ------------------------------------------------------------------
+  // 構内ネットワーク（ノード＝地点、エッジ＝区間）
+  // 下車→改札→出口の全パターンがこのグラフから経路探索で引かれ、
+  // 実測（歩数・秒数）はエッジ単位で蓄積される。
+  // 共通区間（ホーム→改札）の実測は北1行き・南1行きの両方に効く。
+  // 秒数・方向は暫定（TODO: 実測。方向は2026-08-09/10の現地報告を反映済み）
+  // ------------------------------------------------------------------
+  pathNodes: [
+    { id: 'rk_home', kind: 'platform', name: '東西線ホーム', levelIndex: -3 },
+    { id: 'rk_gatefront', kind: 'junction', name: '改札前（地下1階）', levelIndex: -1 },
+    { id: 'rk_concourse', kind: 'junction', name: '改札外コンコース', levelIndex: -1 },
+    { id: 'rk_n1_foot', kind: 'junction', name: '北1出口の階段下', levelIndex: -1 },
+    { id: 'rk_s1_foot', kind: 'junction', name: '南1出口の階段下', levelIndex: -1 },
+    { id: 'rk_n1', kind: 'exit', name: '北1出口', levelIndex: 0 },
+    { id: 'rk_s1', kind: 'exit', name: '南1出口', levelIndex: 0 },
+  ],
+  pathEdges: [
+    { id: 'rk_e_up', from: 'rk_home', to: 'rk_gatefront', kind: 'stairs-up', traversalSec: 70, signpostedAs: '改札', note: '折り返し（らせん状）の階段です。上がりきると体の向きが変わっています' },
+    { id: 'rk_e_gate', from: 'rk_gatefront', to: 'rk_concourse', kind: 'gate-pass', traversalSec: 10, signpostedAs: '改札' },
+    { id: 'rk_e_walk_n1', from: 'rk_concourse', to: 'rk_n1_foot', kind: 'walk', traversalSec: 35, direction: 'left', signpostedAs: '北1出口' },
+    { id: 'rk_e_walk_s1', from: 'rk_concourse', to: 'rk_s1_foot', kind: 'walk', traversalSec: 40, direction: 'right', signpostedAs: '南1出口' },
+    { id: 'rk_e_up_n1', from: 'rk_n1_foot', to: 'rk_n1', kind: 'stairs-up', traversalSec: 30, signpostedAs: '北1' },
+    { id: 'rk_e_up_s1', from: 'rk_s1_foot', to: 'rk_s1', kind: 'stairs-up', traversalSec: 30, signpostedAs: '南1' },
   ],
 
   exits: [
@@ -435,6 +461,7 @@ export const ROKUCHONOME: Station = {
       id: 'rokuchonome_north1',
       stationId: 'rokuchonome',
       name: '北1出口',
+      nodeId: 'rk_n1',
       signpostedAs: '北1',                          // TODO: 実測
       position: { lat: 38.25114, lng: 140.93582 }, // 出典: OSM 六丁の目駅出入口ノード・北東側（ODbL, 2026-08取得）
       levelIndex: 0,
@@ -443,6 +470,7 @@ export const ROKUCHONOME: Station = {
       id: 'rokuchonome_south1',
       stationId: 'rokuchonome',
       name: '南1出口',
+      nodeId: 'rk_s1',
       signpostedAs: '南1',                          // TODO: 実測
       position: { lat: 38.25074, lng: 140.93533 }, // 出典: OSM 六丁の目駅出入口ノード・南西側（ODbL, 2026-08取得）
       levelIndex: 0,
