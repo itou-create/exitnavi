@@ -175,11 +175,13 @@ export function buildGuideSteps(
       kind: 'move',
       instruction: '改札のある階へ上がる',
       signpostedAs: leg.gateName,
+      stairCount: leg.stairCount > 0 ? leg.stairCount : undefined,
       detail:
         `地下${-origin.levelIndex}階のホームから改札階へ上がります。` +
         (leg.stairCount > 0
           ? `階段 約${leg.stairCount}段（エスカレーター併設の場合あり）`
-          : 'エスカレーター／エレベーターで上がれます'),
+          : 'エスカレーター／エレベーターで上がれます') +
+        (leg.stairsNote ? `。${leg.stairsNote}` : ''),
     })
   } else if (origin.levelIndex > 0) {
     steps.push({

@@ -60,17 +60,42 @@ function engageAuto(): void {
     const live = [parts.walk, parts.turn].filter(Boolean).join(' ／ ')
     const fallback = isLast
       ? '測位で「地上に出た」を監視中…'
-      : 'このステップは自動判定の材料が無いため「次へ」で進んでください'
+      : step.kind === 'move'
+        ? '階段・エスカレーターを上がりきったら「次へ」を押してください'
+        : 'このステップは自動判定の材料が無いため「次へ」で進んでください'
     setAutoStatus(parts.done ?? (live || fallback))
   }
 
+  // 判定材料の整理:
+  //   distTarget  : 歩行距離の目安（m）
+  //   stairTarget : 階段の段数（move ステップ。らせん階段でも歩数は数えられる。
+  //                 回転は階段では信用できないため一切使わない）
+  //   dirTarget   : 曲がる方向。ただし「曲がっただけ」は周りを見回しただけでも
+  //                 起きるので、曲がり検知後にさらに数歩進んだら確定とする
+  const distTarget = step.distanceMeters ?? null
+  const stairTarget = step.kind === 'move' && step.stairCount ? Math.ceil(step.stairCount * 0.8) : null
+  const dirTarget = step.direction && step.direction !== 'straight' && step.kind !== 'move' ? step.direction : null
+  const hasCriteria = distTarget != null || stairTarget != null || dirTarget != null
+
+  const CONFIRM_STEPS_AFTER_TURN = 4
+
   let advanced = false
-  let distanceDone = step.distanceMeters == null
-  let turnDone = !step.direction || step.direction === 'straight'
-  const hasCriteria = step.distanceMeters != null || (step.direction != null && step.direction !== 'straight')
+  let distanceDone = distTarget == null && stairTarget == null
+  let turnConfirmed = dirTarget == null
+  let turnHit = false
+  let stepsNow = 0
+  let stepsAtTurn: number | null = null
+
+  const evalTurnConfirm = () => {
+    if (!dirTarget || turnConfirmed) return
+    if (turnHit && stepsAtTurn != null && stepsNow >= stepsAtTurn + CONFIRM_STEPS_AFTER_TURN) {
+      turnConfirmed = true
+      parts.turn = '✓ 曲がって進んでいます'
+    }
+  }
 
   const maybeAdvance = () => {
-    if (advanced || !hasCriteria || !distanceDone || !turnDone || isLast) return
+    if (advanced || !hasCriteria || !distanceDone || !turnConfirmed || isLast) return
     advanced = true
     parts.done = '✓ 検知しました — 次のステップへ進みます'
     renderStatus()
@@ -78,36 +103,55 @@ function engageAuto(): void {
     autoAdvanceTimer = window.setTimeout(() => handlers.onGuideStep(1), 1200)
   }
 
-  // 歩数 → 距離の目安
-  if (step.distanceMeters != null || step.kind === 'walk' || step.kind === 'orient') {
-    const target = step.distanceMeters
-    void startStepCounter((steps) => {
-      const meters = Math.round(steps * STRIDE_METERS)
-      parts.walk = target != null ? `歩行 約${meters}m／目安${target}m` : `歩行 約${meters}m`
-      if (target != null && meters >= target) {
-        distanceDone = true
-        parts.walk = `✓ 目安の${target}mに到達`
+  // 歩数（距離・階段の上りきり・曲がり後の確定、すべての土台）
+  const needSteps =
+    distTarget != null || stairTarget != null || dirTarget != null ||
+    step.kind === 'walk' || step.kind === 'orient'
+  if (needSteps) {
+    void startStepCounter((n) => {
+      stepsNow = n
+      const meters = Math.round(n * STRIDE_METERS)
+      if (stairTarget != null) {
+        if (n >= stairTarget) {
+          distanceDone = true
+          parts.walk = `✓ 階段を上がりきった頃です（${n}歩）`
+        } else {
+          parts.walk = `階段 ${n}歩／約${step.stairCount}段`
+        }
+      } else if (distTarget != null) {
+        if (meters >= distTarget) {
+          distanceDone = true
+          parts.walk = `✓ 目安の${distTarget}mに到達`
+        } else {
+          parts.walk = `歩行 約${meters}m／目安${distTarget}m`
+        }
+      } else {
+        parts.walk = `歩行 約${meters}m`
       }
+      evalTurnConfirm()
       renderStatus()
       maybeAdvance()
     })
   }
 
-  // ジャイロ → 曲がりの検知
-  if (step.direction && step.direction !== 'straight') {
-    const targetDeg = step.direction === 'u-turn' ? 150 : step.direction.startsWith('slight') ? 30 : 60
-    const wantRight = step.direction === 'right' || step.direction === 'slight-right'
+  // ジャイロ → 曲がりの検知（階段ステップでは使わない。らせん階段で誤検知するため）
+  if (dirTarget) {
+    const targetDeg = dirTarget === 'u-turn' ? 150 : dirTarget.startsWith('slight') ? 30 : 60
+    const wantRight = dirTarget === 'right' || dirTarget === 'slight-right'
     void startTurnDetector((cum) => {
-      const ok = step.direction === 'u-turn'
+      const ok = dirTarget === 'u-turn'
         ? Math.abs(cum) >= targetDeg
         : wantRight ? cum >= targetDeg : cum <= -targetDeg
-      if (ok) {
-        turnDone = true
-        parts.turn = `✓ ${wantRight ? '右' : step.direction === 'u-turn' ? '折り返し' : '左'}に曲がりました`
-      } else {
-        const deg = Math.round(Math.abs(cum))
-        parts.turn = `回転 ${cum > 0 ? '右' : '左'}${deg}°／目標${targetDeg}°`
+      if (ok && !turnHit) {
+        turnHit = true
+        stepsAtTurn = stepsNow
       }
+      if (!turnConfirmed) {
+        parts.turn = turnHit
+          ? '✓ 曲がりを検知 — そのまま数歩進むと確定します'
+          : `回転 ${cum > 0 ? '右' : '左'}${Math.round(Math.abs(cum))}°／目標${targetDeg}°`
+      }
+      evalTurnConfirm()
       renderStatus()
       maybeAdvance()
     })

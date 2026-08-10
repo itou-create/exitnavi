@@ -116,6 +116,12 @@ export interface ConcourseLeg {
    */
   gateToExitDirection?: GuidanceDirection
   /**
+   * 階段についての注意（例: 「折り返し階段。上がりきると向きが変わります」）。
+   * らせん・折り返し階段では「直前の動作を終えた向き」基準が崩れるため、
+   * その事実を利用者に伝えるためのデータ。
+   */
+  stairsNote?: string
+  /**
    * ステップ案内（第2段階）。手書きの詳細ステップ。
    * 無ければ leg の情報から汎用ステップを自動生成する（services/guide.ts）。
    */
@@ -164,6 +170,8 @@ export interface GuidanceStep {
   directionBase?: string
   /** 歩く距離の目安（m）。無ければ未整備 */
   distanceMeters?: number
+  /** 階段の段数（move ステップ用）。自動判定の「上りきり」検知に使う */
+  stairCount?: number
   /** 現地の案内板の表記（signposted_as）。答え合わせ（確認）用 */
   signpostedAs?: string
   /** 補足（例: 「約18段・エスカレーター併設」） */

@@ -186,7 +186,7 @@ export const IKEBUKURO: Station = {
       //    「アプリだけでたどり着ける」品質を主張しないこと。
       steps: [
         { kind: 'orient', instruction: '電車を降りたら、ホーム中ほどの階段へ', signpostedAs: '中央改札', detail: '乗車位置によっては進行方向を戻る形になります（TODO: 実測）' },
-        { kind: 'move', direction: 'straight', instruction: 'ホーム中ほどの階段を上がる', signpostedAs: '中央改札', detail: '約18段・エスカレーター併設（TODO: 実測）' },
+        { kind: 'move', direction: 'straight', stairCount: 18, instruction: 'ホーム中ほどの階段を上がる', signpostedAs: '中央改札', detail: '約18段・エスカレーター併設（TODO: 実測）' },
         { kind: 'gate', direction: 'straight', distanceMeters: 40, instruction: '上がったら正面の中央改札を出る', signpostedAs: '中央改札', detail: '方向・距離は仮値（TODO: 実測）' },
         { kind: 'walk', direction: 'slight-right', distanceMeters: 60, instruction: '改札を出たら右ななめ前へ進む', signpostedAs: '東口・サンシャインシティ方面', detail: '方向・距離は仮値（TODO: 実測）' },
         { kind: 'exit', direction: 'straight', instruction: '正面の東口から地上に出る', signpostedAs: '東口' },
@@ -450,10 +450,11 @@ export const ROKUCHONOME: Station = {
   ],
 
   legs: [
-    // 改札は1つ。B3ホーム → B1改札 → 地上。 TODO: 実測（所要時間）
+    // 改札は1つ。B3ホーム → B1改札 → 地上。 TODO: 実測（所要時間・階段の段数）
     // gateToExitDirection: 2026-08-09 利用者の現地指摘により修正（北1=左・南1=右）
-    { platformId: 'rokuchonome_subway_tozai', exitId: 'rokuchonome_north1', traversalTime: 150, stairCount: 0, gateName: '改札', signpostedAs: '北1出口', gateToExitDirection: 'left' },
-    { platformId: 'rokuchonome_subway_tozai', exitId: 'rokuchonome_south1', traversalTime: 160, stairCount: 0, gateName: '改札', signpostedAs: '南1出口', gateToExitDirection: 'right' },
+    // stairsNote: 2026-08-10 利用者の現地報告（らせん状・折り返し階段）
+    { platformId: 'rokuchonome_subway_tozai', exitId: 'rokuchonome_north1', traversalTime: 150, stairCount: 0, gateName: '改札', signpostedAs: '北1出口', gateToExitDirection: 'left', stairsNote: '折り返し（らせん状）の階段です。上がりきると体の向きが変わっています' },
+    { platformId: 'rokuchonome_subway_tozai', exitId: 'rokuchonome_south1', traversalTime: 160, stairCount: 0, gateName: '改札', signpostedAs: '南1出口', gateToExitDirection: 'right', stairsNote: '折り返し（らせん状）の階段です。上がりきると体の向きが変わっています' },
   ],
 }
 
