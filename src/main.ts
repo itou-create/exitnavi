@@ -11,6 +11,7 @@ import { setDemoMode, usingMock } from './services/odpt'
 import { stopCompass } from './services/compass'
 import { startStepCounter, stopStepCounter, STRIDE_METERS } from './services/steps'
 import { startTurnDetector, stopTurnDetector } from './services/turn'
+import * as telemetry from './services/telemetry'
 
 /**
  * 「この駅にいる」と自動判定してよい距離の上限。
@@ -111,6 +112,7 @@ function engageAuto(): void {
     void startStepCounter((n) => {
       stepsNow = n
       const meters = Math.round(n * STRIDE_METERS)
+      telemetry.noteSensors({ walkSteps: n })
       if (stairTarget != null) {
         if (n >= stairTarget) {
           distanceDone = true
@@ -139,6 +141,7 @@ function engageAuto(): void {
     const targetDeg = dirTarget === 'u-turn' ? 150 : dirTarget.startsWith('slight') ? 30 : 60
     const wantRight = dirTarget === 'right' || dirTarget === 'slight-right'
     void startTurnDetector((cum) => {
+      telemetry.noteSensors({ turnDeg: cum })
       const ok = dirTarget === 'u-turn'
         ? Math.abs(cum) >= targetDeg
         : wantRight ? cum >= targetDeg : cum <= -targetDeg
@@ -163,6 +166,7 @@ function engageAuto(): void {
       (pos) => {
         const acc = pos.coords.accuracy
         if (isOutdoor(acc)) {
+          telemetry.noteOutdoor(acc)
           setState({
             accuracy: acc,
             guideArrivalNote: `測位精度が±${Math.round(acc)}mに改善 — 地上に出たと判定しました 🎉`,
@@ -241,13 +245,36 @@ const handlers: Handlers = {
     stopAllSensors()
     const s = getState()
     const next = Math.min(Math.max(s.guideIndex + delta, 0), s.guideSteps.length - 1)
+    // 前進のときだけ実測を記録する（戻りは記録しない）
+    if (delta > 0 && next !== s.guideIndex) {
+      telemetry.advanceStep(s.guideSteps[next] ?? null)
+    }
     setState({ guideIndex: next })
     reengageAuto()
   },
   onGuideExit() {
-    // 案内をやめて結果画面へ戻る（データは保持）
+    // 案内をやめて結果画面へ戻る（データは保持）。中断した計測は破棄
     stopAllSensors()
+    telemetry.cancelRoute()
     setState({ screen: 'result', guideArrivalNote: null })
+  },
+  onShareMeasurements() {
+    const s = getState()
+    const m = telemetry.finishRoute()
+    if (!m || m.steps.length === 0) {
+      setState({ guideArrivalNote: '共有できる計測データがまだありません。' })
+      return
+    }
+    const label = `${s.station?.name ?? ''} ${s.origin?.line ?? ''} → ${s.candidates[0]?.exit.name ?? ''}`
+    const body = telemetry.shareText(m, label)
+    if (navigator.share) {
+      void navigator.share({ title: '出口ナビ 実測データ', text: body }).catch(() => { /* キャンセルは無視 */ })
+    } else {
+      void navigator.clipboard?.writeText(body).then(
+        () => setState({ guideArrivalNote: '計測データをコピーしました。チャットやメールで貼り付けて送ってください。' }),
+        () => setState({ guideArrivalNote: '共有に失敗しました。' }),
+      )
+    }
   },
   async onToggleAutoGuide() {
     const s = getState()
@@ -342,12 +369,15 @@ function startGuideWith(pos: BoardedPosition | null): void {
   const s = getState()
   const best = s.candidates[0]
   if (!s.station || !s.origin || !best) return
+  const guideSteps = buildGuideSteps(s.station, s.origin, best, {
+    train: s.originTrain,
+    boardedPosition: pos,
+  })
+  // 実測レコーダーを起動（案内どおり歩くこと自体が計測になる）
+  telemetry.beginRoute(s.station.id, s.origin.id, best.exit.id, guideSteps[0] ?? null)
   setState({
     boardedPosition: pos,
-    guideSteps: buildGuideSteps(s.station, s.origin, best, {
-      train: s.originTrain,
-      boardedPosition: pos,
-    }),
+    guideSteps,
     guideIndex: 0,
     guideArrivalNote: null,
     screen: 'guide',

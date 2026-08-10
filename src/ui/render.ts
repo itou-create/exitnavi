@@ -12,6 +12,7 @@ import { bearingDegrees } from '../services/geo'
 import { startCompass } from '../services/compass'
 import { startStepCounter, STRIDE_METERS } from '../services/steps'
 import { startTurnDetector } from '../services/turn'
+import { measuresFor, medianTotalSec } from '../services/telemetry'
 
 /**
  * 描画
@@ -31,6 +32,7 @@ export interface Handlers {
   onStartGuide: () => void
   onPickBoarded: (pos: BoardedPosition | null) => void
   onToggleAutoGuide: () => void
+  onShareMeasurements: () => void
   onGuideStep: (delta: number) => void
   onGuideExit: () => void
   onCheckOutdoor: () => void
@@ -370,7 +372,15 @@ function result(s: AppState, h: Handlers): HTMLElement {
     w.appendChild(cmp)
   }
 
-  // 数値が暫定であることを隠さない
+  // 数値が暫定であることを隠さない。この端末の実測があればそれも見せる
+  const myMeasures = s.station && s.origin
+    ? measuresFor(s.station.id, s.origin.id, best.exit.id)
+    : []
+  const myMedian = medianTotalSec(myMeasures)
+  if (myMedian != null) {
+    w.appendChild(text('p', 'why',
+      `この経路のあなたの実測: 中央値 約${fmtMin(myMedian)}（${myMeasures.length}回の歩行記録より）`))
+  }
   w.appendChild(text('p', 'hint',
     '構内の所要時間は暫定値です（pathways.txt 未整備のため手入力）。実測に置き換えるまで参考値として扱ってください。'))
 
@@ -531,6 +541,12 @@ function guide(s: AppState, h: Handlers): HTMLElement {
   } else {
     if (s.guideArrivalNote) w.appendChild(text('p', 'why', s.guideArrivalNote))
     w.appendChild(button('ghost', '地上に出たか確認する（測位）', h.onCheckOutdoor))
+
+    // 実測データの提供（クラウドソーシング）。歩いたこと自体が計測になっている
+    const share = button('ghost', '📊 この歩行の計測データを提供する', h.onShareMeasurements)
+    share.appendChild(text('small', '',
+      '各ステップの秒数・歩数・回転角だけを共有します（位置の履歴は含みません）'))
+    w.appendChild(share)
     if (s.destination) {
       const exit = s.candidates[0]?.exit
       // 地上に出た後の「で、どっち？」に、端末の向きに追随する矢印で答える
