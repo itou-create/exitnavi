@@ -22,6 +22,8 @@ export interface StepMeasure {
   walkSteps?: number
   /** 累積回転角（右+、センサーONのときのみ） */
   turnDeg?: number
+  /** このステップの目安距離（歩幅キャリブレーションに使う） */
+  targetMeters?: number
 }
 
 export interface RouteMeasure {
@@ -95,6 +97,7 @@ function closeCurrentStep(): void {
     elapsedSec: Math.round((Date.now() - rec.stepStartedAt) / 1000),
     walkSteps: rec.sensors.walkSteps,
     turnDeg: rec.sensors.turnDeg != null ? Math.round(rec.sensors.turnDeg) : undefined,
+    targetMeters: rec.currentStep.distanceMeters,
   })
 }
 
@@ -148,6 +151,58 @@ export function medianTotalSec(measures: RouteMeasure[]): number | null {
   if (measures.length === 0) return null
   const sorted = measures.map((m) => m.totalSec).sort((a, b) => a - b)
   return sorted[Math.floor(sorted.length / 2)]
+}
+
+function median(values: number[]): number | null {
+  if (values.length === 0) return null
+  const sorted = [...values].sort((a, b) => a - b)
+  return sorted[Math.floor(sorted.length / 2)]
+}
+
+/** この端末での、ある経路のあるステップの実測プロファイル */
+export interface StepProfile {
+  medianSec: number | null
+  medianSteps: number | null
+  samples: number
+}
+
+export function localStepProfile(
+  stationId: string,
+  platformId: string,
+  exitId: string,
+  stepIndex: number,
+  kind: GuidanceStep['kind'],
+): StepProfile {
+  const list = measuresFor(stationId, platformId, exitId)
+    .map((m) => m.steps[stepIndex])
+    .filter((st): st is StepMeasure => !!st && st.kind === kind)
+  return {
+    medianSec: median(list.map((st) => st.elapsedSec)),
+    medianSteps: median(list.filter((st) => st.walkSteps != null).map((st) => st.walkSteps!)),
+    samples: list.length,
+  }
+}
+
+/** デフォルトの歩幅（m） */
+export const DEFAULT_STRIDE = 0.7
+
+/**
+ * 歩幅の自動キャリブレーション。
+ * 目安距離が分かっているステップの「距離 ÷ 歩数」の中央値から歩幅を推定する。
+ * サンプルが無ければデフォルト値。極端な値は 0.5〜0.9m に丸める。
+ */
+export function strideInfo(): { meters: number; calibrated: boolean; samples: number } {
+  const samples: number[] = []
+  loadAll().forEach((m) =>
+    m.steps.forEach((st) => {
+      if (st.targetMeters != null && st.walkSteps != null && st.walkSteps >= 8) {
+        samples.push(st.targetMeters / st.walkSteps)
+      }
+    }),
+  )
+  const med = median(samples)
+  if (med == null) return { meters: DEFAULT_STRIDE, calibrated: false, samples: 0 }
+  return { meters: Math.min(0.9, Math.max(0.5, med)), calibrated: true, samples: samples.length }
 }
 
 /** 共有用テキスト（人が読める形 + 機械処理用JSON） */

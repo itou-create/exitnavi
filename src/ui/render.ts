@@ -10,7 +10,8 @@ import { stationMap } from './map'
 import { floorPlan } from './floorplans'
 import { bearingDegrees } from '../services/geo'
 import { startCompass } from '../services/compass'
-import { startStepCounter, STRIDE_METERS } from '../services/steps'
+import { startStepCounter } from '../services/steps'
+import { strideInfo } from '../services/telemetry'
 import { startTurnDetector } from '../services/turn'
 import { measuresFor, medianTotalSec } from '../services/telemetry'
 
@@ -685,18 +686,20 @@ function walkProgressBlock(targetMeters: number | null): HTMLElement {
   bar.style.display = 'none'
 
   const btn = button('ghost', '歩数で進み具合を表示', () => {
+    const stride = strideInfo()
+    const strideLabel = `歩幅${stride.meters.toFixed(2)}m換算${stride.calibrated ? '・実測補正済み' : ''}`
     void startStepCounter((steps) => {
-      const meters = Math.round(steps * STRIDE_METERS)
+      const meters = Math.round(steps * stride.meters)
       if (targetMeters != null) {
         bar.style.display = ''
         const ratio = Math.min(meters / targetMeters, 1)
         fill.style.width = `${Math.round(ratio * 100)}%`
         note.textContent =
           ratio >= 1
-            ? `約${meters}m歩きました — そろそろ次の目印です（歩幅${STRIDE_METERS}m換算の目安）`
-            : `約${meters}m / 目安${targetMeters}m（歩幅${STRIDE_METERS}m換算）`
+            ? `約${meters}m歩きました — そろそろ次の目印です（${strideLabel}）`
+            : `約${meters}m / 目安${targetMeters}m（${strideLabel}）`
       } else {
-        note.textContent = `ここまで約${meters}m（${steps}歩 × 歩幅${STRIDE_METERS}m の目安）`
+        note.textContent = `ここまで約${meters}m（${steps}歩・${strideLabel}）`
       }
     }).then((res) => {
       if (res === 'denied') note.textContent = 'モーションセンサーの利用が許可されませんでした'

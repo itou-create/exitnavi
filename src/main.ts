@@ -9,9 +9,10 @@ import { buildGuideSteps, canPersonalizeOrient } from './services/guide'
 import { IKEBUKURO, STATIONS } from './data/stations'
 import { setDemoMode, usingMock } from './services/odpt'
 import { stopCompass } from './services/compass'
-import { startStepCounter, stopStepCounter, STRIDE_METERS } from './services/steps'
+import { startStepCounter, stopStepCounter } from './services/steps'
 import { startTurnDetector, stopTurnDetector } from './services/turn'
 import * as telemetry from './services/telemetry'
+import { communityRouteFor } from './data/measured'
 
 /**
  * 「この駅にいる」と自動判定してよい距離の上限。
@@ -76,12 +77,37 @@ function engageAuto(): void {
   const distTarget = step.distanceMeters ?? null
   const stairTarget = step.kind === 'move' && step.stairCount ? Math.ceil(step.stairCount * 0.8) : null
   const dirTarget = step.direction && step.direction !== 'straight' && step.kind !== 'move' ? step.direction : null
-  const hasCriteria = distTarget != null || stairTarget != null || dirTarget != null
+
+  // 明示データが無いステップでも、実測プロファイルがあれば自動判定できる。
+  // 優先順位: この端末の実測（2回以上）→ コミュニティ集約（data/measured.ts）
+  // ここが「たくさんのデータで精度が上がる」の本体。
+  let learnedTarget: number | null = null
+  let learnedLabel = ''
+  const best = s.candidates[0]
+  if (distTarget == null && stairTarget == null && !isLast && s.station && s.origin && best) {
+    const local = telemetry.localStepProfile(
+      s.station.id, s.origin.id, best.exit.id, s.guideIndex, step.kind,
+    )
+    if (local.samples >= 2 && local.medianSteps != null && local.medianSteps >= 5) {
+      learnedTarget = Math.max(4, Math.ceil(local.medianSteps * 0.9))
+      learnedLabel = `あなたの実測${local.samples}回`
+    } else {
+      const community = communityRouteFor(s.station.id, s.origin.id, best.exit.id)
+      const cs = community?.steps[s.guideIndex]
+      if (community && cs && cs.kind === step.kind && cs.steps != null && cs.steps >= 5) {
+        learnedTarget = Math.max(4, Math.ceil(cs.steps * 0.9))
+        learnedLabel = `みんなの実測${community.samples}件`
+      }
+    }
+  }
+
+  const hasCriteria = distTarget != null || stairTarget != null || dirTarget != null || learnedTarget != null
 
   const CONFIRM_STEPS_AFTER_TURN = 4
+  const stride = telemetry.strideInfo().meters
 
   let advanced = false
-  let distanceDone = distTarget == null && stairTarget == null
+  let distanceDone = distTarget == null && stairTarget == null && learnedTarget == null
   let turnConfirmed = dirTarget == null
   let turnHit = false
   let stepsNow = 0
@@ -104,14 +130,14 @@ function engageAuto(): void {
     autoAdvanceTimer = window.setTimeout(() => handlers.onGuideStep(1), 1200)
   }
 
-  // 歩数（距離・階段の上りきり・曲がり後の確定、すべての土台）
+  // 歩数（距離・階段の上りきり・実測プロファイル・曲がり後の確定、すべての土台）
   const needSteps =
-    distTarget != null || stairTarget != null || dirTarget != null ||
+    distTarget != null || stairTarget != null || dirTarget != null || learnedTarget != null ||
     step.kind === 'walk' || step.kind === 'orient'
   if (needSteps) {
     void startStepCounter((n) => {
       stepsNow = n
-      const meters = Math.round(n * STRIDE_METERS)
+      const meters = Math.round(n * stride)
       telemetry.noteSensors({ walkSteps: n })
       if (stairTarget != null) {
         if (n >= stairTarget) {
@@ -126,6 +152,13 @@ function engageAuto(): void {
           parts.walk = `✓ 目安の${distTarget}mに到達`
         } else {
           parts.walk = `歩行 約${meters}m／目安${distTarget}m`
+        }
+      } else if (learnedTarget != null) {
+        if (n >= learnedTarget) {
+          distanceDone = true
+          parts.walk = `✓ 実測目安の${learnedTarget}歩に到達（${learnedLabel}）`
+        } else {
+          parts.walk = `${n}歩／実測目安${learnedTarget}歩（${learnedLabel}）`
         }
       } else {
         parts.walk = `歩行 約${meters}m`
