@@ -302,6 +302,11 @@ export interface AppState {
   guideIndex: number
   /** 最終ステップでの「地上に出たか」測位チェックの結果表示 */
   guideArrivalNote: string | null
+  /**
+   * 自動判定モード。歩数・ジャイロ・測位精度の閾値でステップを自動で進める。
+   * 現在地の測位ではなく「指示どおりの行動を検知したら申告を代行する」もの。
+   */
+  autoGuide: boolean
   /** モックデータで動いているか。UIに明示する（嘘の精度を出さないため） */
   usingMock: boolean
   error: string | null

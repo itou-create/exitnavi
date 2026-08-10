@@ -24,6 +24,7 @@ const initial: AppState = {
   guideSteps: [],
   guideIndex: 0,
   guideArrivalNote: null,
+  autoGuide: false,
   usingMock: false,
   error: null,
 }

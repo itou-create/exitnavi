@@ -9,8 +9,8 @@ import { buildGuideSteps, canPersonalizeOrient } from './services/guide'
 import { IKEBUKURO, STATIONS } from './data/stations'
 import { setDemoMode, usingMock } from './services/odpt'
 import { stopCompass } from './services/compass'
-import { stopStepCounter } from './services/steps'
-import { stopTurnDetector } from './services/turn'
+import { startStepCounter, stopStepCounter, STRIDE_METERS } from './services/steps'
+import { startTurnDetector, stopTurnDetector } from './services/turn'
 
 /**
  * 「この駅にいる」と自動判定してよい距離の上限。
@@ -20,6 +20,127 @@ import { stopTurnDetector } from './services/turn'
 const STATION_RADIUS_METERS = 1200
 
 const root = document.getElementById('app')!
+
+/* ------------------------- 自動判定モード ------------------------- */
+// 歩数・ジャイロ・測位精度の閾値で「次へ」の申告を代行する。
+// 現在地を測って進めるのではなく、「指示どおりの行動を検知」して進める。
+
+let autoAdvanceTimer: number | null = null
+let geoWatchId: number | null = null
+
+function stopAllSensors(): void {
+  stopCompass()
+  stopStepCounter()
+  stopTurnDetector()
+  if (autoAdvanceTimer != null) {
+    clearTimeout(autoAdvanceTimer)
+    autoAdvanceTimer = null
+  }
+  if (geoWatchId != null && 'geolocation' in navigator) {
+    navigator.geolocation.clearWatch(geoWatchId)
+    geoWatchId = null
+  }
+}
+
+/** 自動判定の状況表示（render が置く #autostatus を直接更新。60Hz再描画を避ける） */
+function setAutoStatus(textContent: string): void {
+  const node = document.getElementById('autostatus')
+  if (node && node.textContent !== textContent) node.textContent = textContent
+}
+
+function engageAuto(): void {
+  const s = getState()
+  if (!s.autoGuide || s.screen !== 'guide') return
+  const step = s.guideSteps[s.guideIndex]
+  if (!step) return
+  const isLast = s.guideIndex === s.guideSteps.length - 1
+
+  const parts: { walk?: string; turn?: string; done?: string } = {}
+  const renderStatus = () => {
+    const live = [parts.walk, parts.turn].filter(Boolean).join(' ／ ')
+    const fallback = isLast
+      ? '測位で「地上に出た」を監視中…'
+      : 'このステップは自動判定の材料が無いため「次へ」で進んでください'
+    setAutoStatus(parts.done ?? (live || fallback))
+  }
+
+  let advanced = false
+  let distanceDone = step.distanceMeters == null
+  let turnDone = !step.direction || step.direction === 'straight'
+  const hasCriteria = step.distanceMeters != null || (step.direction != null && step.direction !== 'straight')
+
+  const maybeAdvance = () => {
+    if (advanced || !hasCriteria || !distanceDone || !turnDone || isLast) return
+    advanced = true
+    parts.done = '✓ 検知しました — 次のステップへ進みます'
+    renderStatus()
+    try { navigator.vibrate?.(60) } catch { /* 対応していない端末は無視 */ }
+    autoAdvanceTimer = window.setTimeout(() => handlers.onGuideStep(1), 1200)
+  }
+
+  // 歩数 → 距離の目安
+  if (step.distanceMeters != null || step.kind === 'walk' || step.kind === 'orient') {
+    const target = step.distanceMeters
+    void startStepCounter((steps) => {
+      const meters = Math.round(steps * STRIDE_METERS)
+      parts.walk = target != null ? `歩行 約${meters}m／目安${target}m` : `歩行 約${meters}m`
+      if (target != null && meters >= target) {
+        distanceDone = true
+        parts.walk = `✓ 目安の${target}mに到達`
+      }
+      renderStatus()
+      maybeAdvance()
+    })
+  }
+
+  // ジャイロ → 曲がりの検知
+  if (step.direction && step.direction !== 'straight') {
+    const targetDeg = step.direction === 'u-turn' ? 150 : step.direction.startsWith('slight') ? 30 : 60
+    const wantRight = step.direction === 'right' || step.direction === 'slight-right'
+    void startTurnDetector((cum) => {
+      const ok = step.direction === 'u-turn'
+        ? Math.abs(cum) >= targetDeg
+        : wantRight ? cum >= targetDeg : cum <= -targetDeg
+      if (ok) {
+        turnDone = true
+        parts.turn = `✓ ${wantRight ? '右' : step.direction === 'u-turn' ? '折り返し' : '左'}に曲がりました`
+      } else {
+        const deg = Math.round(Math.abs(cum))
+        parts.turn = `回転 ${cum > 0 ? '右' : '左'}${deg}°／目標${targetDeg}°`
+      }
+      renderStatus()
+      maybeAdvance()
+    })
+  }
+
+  // 最終ステップ → 測位精度の改善で「地上に出た」を自動判定
+  if (isLast && 'geolocation' in navigator) {
+    geoWatchId = navigator.geolocation.watchPosition(
+      (pos) => {
+        const acc = pos.coords.accuracy
+        if (isOutdoor(acc)) {
+          setState({
+            accuracy: acc,
+            guideArrivalNote: `測位精度が±${Math.round(acc)}mに改善 — 地上に出たと判定しました 🎉`,
+          })
+          if (geoWatchId != null) {
+            navigator.geolocation.clearWatch(geoWatchId)
+            geoWatchId = null
+          }
+        }
+      },
+      () => { /* 測位失敗は無視（手動ボタンが残っている） */ },
+      { enableHighAccuracy: true, maximumAge: 5000 },
+    )
+  }
+
+  renderStatus()
+}
+
+/** ステップ遷移後に自動判定を仕掛け直す（描画完了を待ってから） */
+function reengageAuto(): void {
+  window.setTimeout(engageAuto, 0)
+}
 
 const handlers: Handlers = {
   onPickStation(station: Station) {
@@ -73,19 +194,43 @@ const handlers: Handlers = {
     startGuideWith(pos)
   },
   onGuideStep(delta: number) {
-    stopCompass()
-    stopStepCounter()
-    stopTurnDetector()
+    stopAllSensors()
     const s = getState()
     const next = Math.min(Math.max(s.guideIndex + delta, 0), s.guideSteps.length - 1)
     setState({ guideIndex: next })
+    reengageAuto()
   },
   onGuideExit() {
     // 案内をやめて結果画面へ戻る（データは保持）
-    stopCompass()
-    stopStepCounter()
-    stopTurnDetector()
+    stopAllSensors()
     setState({ screen: 'result', guideArrivalNote: null })
+  },
+  async onToggleAutoGuide() {
+    const s = getState()
+    if (s.autoGuide) {
+      stopAllSensors()
+      setState({ autoGuide: false })
+      return
+    }
+    // iOS はユーザー操作起点で許可が要る。ここで両方まとめて要求する
+    // （プロンプトは初回のみ。以降は許可済みとして即座に解決される）
+    const dm = DeviceMotionEvent as unknown as { requestPermission?: () => Promise<string> }
+    const doe = DeviceOrientationEvent as unknown as { requestPermission?: () => Promise<string> }
+    try {
+      const results = await Promise.all([
+        dm.requestPermission?.() ?? 'granted',
+        doe.requestPermission?.() ?? 'granted',
+      ])
+      if (results.some((r) => r !== 'granted')) {
+        setState({ guideArrivalNote: 'センサーの利用が許可されなかったため、自動判定は使えません。' })
+        return
+      }
+    } catch {
+      setState({ guideArrivalNote: 'センサーの利用が許可されなかったため、自動判定は使えません。' })
+      return
+    }
+    setState({ autoGuide: true })
+    reengageAuto()
   },
   async onCheckOutdoor() {
     // 許可されている2つ目の測位：「地上に出たか」を accuracy の改善で判定する。
@@ -104,9 +249,7 @@ const handlers: Handlers = {
     }
   },
   onRestart() {
-    stopCompass()
-    stopStepCounter()
-    stopTurnDetector()
+    stopAllSensors()
     setDemoMode(false)
     resetState()
     void start()
@@ -165,6 +308,7 @@ function startGuideWith(pos: BoardedPosition | null): void {
     guideArrivalNote: null,
     screen: 'guide',
   })
+  reengageAuto()
 }
 
 /** 駅が確定してから先の共通フロー（自動判定でも手動選択でも同じ） */

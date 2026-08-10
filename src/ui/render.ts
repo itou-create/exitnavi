@@ -30,6 +30,7 @@ export interface Handlers {
   onPickDestination: (destination: Destination) => void
   onStartGuide: () => void
   onPickBoarded: (pos: BoardedPosition | null) => void
+  onToggleAutoGuide: () => void
   onGuideStep: (delta: number) => void
   onGuideExit: () => void
   onCheckOutdoor: () => void
@@ -443,6 +444,22 @@ function guide(s: AppState, h: Handlers): HTMLElement {
   // 旅程のどこにいるか（路線図風）。位置の測位ではなく「次へ」の申告に連動
   w.appendChild(journeyStrip(step.kind))
 
+  // 自動判定モード。ONなら歩数・ジャイロ・測位が自動で動き、条件を満たすと次へ進む
+  if (s.autoGuide) {
+    const box = el('div', 'autoline')
+    box.appendChild(text('span', 'autodot', '●'))
+    const stat = text('span', 'autostat', '自動判定を開始しています…')
+    stat.id = 'autostatus'
+    box.appendChild(stat)
+    const off = el('button', 'autooff')
+    off.textContent = 'OFF'
+    off.addEventListener('click', () => h.onToggleAutoGuide())
+    box.appendChild(off)
+    w.appendChild(box)
+  } else {
+    w.appendChild(button('ghost', '自動判定モードをON（歩数・ジャイロで自動で進む）', () => h.onToggleAutoGuide()))
+  }
+
   // 方向と距離が主役。案内表示を見なくても次の一歩が決まるようにする
   if (step.direction) {
     const d = directionDisplay(step.direction)
@@ -497,13 +514,16 @@ function guide(s: AppState, h: Handlers): HTMLElement {
 
   const last = s.guideIndex === total - 1
 
-  // 歩数による進み具合（構内での精度向上）。歩く系のステップにだけ出す
-  if (step.kind === 'orient' || step.kind === 'walk' || step.kind === 'gate') {
-    w.appendChild(walkProgressBlock(step.distanceMeters ?? null))
-  }
-  // ジャイロによる曲がり確認。方向指示のあるステップにだけ出す
-  if (step.direction) {
-    w.appendChild(turnCheckBlock(step.direction))
+  // 手動のセンサーボタンは自動判定モード中は出さない（重複するため）
+  if (!s.autoGuide) {
+    // 歩数による進み具合（構内での精度向上）。歩く系のステップにだけ出す
+    if (step.kind === 'orient' || step.kind === 'walk' || step.kind === 'gate') {
+      w.appendChild(walkProgressBlock(step.distanceMeters ?? null))
+    }
+    // ジャイロによる曲がり確認。方向指示のあるステップにだけ出す
+    if (step.direction) {
+      w.appendChild(turnCheckBlock(step.direction))
+    }
   }
 
   if (!last) {

@@ -153,6 +153,15 @@ a.btn{text-decoration:none}
 .dirlabel{display:block;font-size:19px;font-weight:900;letter-spacing:-.01em}
 .dirsub{display:block;font-size:10.5px;color:var(--ink3);margin-top:2px}
 
+/* 自動判定モード */
+.autoline{display:flex;align-items:center;gap:8px;background:rgba(0,180,120,.09);
+  border:1px solid rgba(0,180,120,.3);border-radius:11px;padding:9px 12px;margin:0 0 12px}
+.autodot{color:var(--go);font-size:9px;animation:pulse 1.6s ease-in-out infinite;flex:none}
+.autostat{font-size:11.5px;font-weight:700;color:var(--ink2);flex:1;min-width:0}
+.autooff{flex:none;border:1px solid var(--line);background:none;border-radius:8px;
+  font-size:10px;font-weight:800;padding:3px 9px;color:var(--ink3);cursor:pointer;font-family:inherit}
+.autooff:hover{border-color:var(--stop);color:var(--stop)}
+
 /* 歩数の進み具合 */
 .walkbox{margin:12px 0 0;background:var(--bg);border-radius:11px;padding:12px 14px}
 .walkbox .stepbar{margin:8px 0}
