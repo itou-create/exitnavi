@@ -4,7 +4,7 @@ import { distanceMeters } from '../services/geo'
 import { rankPlatformsForManualPick } from '../services/originGuess'
 import { explain, fmtMin, TIE_THRESHOLD_SECONDS } from '../services/exitPicker'
 import { placesSearchEnabled, searchPlaces } from '../services/places'
-import { directionDisplay, stepKindLabel } from '../services/guide'
+import { directionDisplay } from '../services/guide'
 import { platformDiagram } from './diagram'
 import { stationMap } from './map'
 import { floorPlan } from './floorplans'
@@ -437,18 +437,11 @@ function guide(s: AppState, h: Handlers): HTMLElement {
 
   w.appendChild(text('div', 'crumb',
     `${s.origin?.name ?? ''} → ${s.candidates[0]?.exit.name ?? ''}` +
-    (s.destination ? `（${s.destination.name}方面）` : '')))
+    (s.destination ? `（${s.destination.name}方面）` : '') +
+    ` ／ ${s.guideIndex + 1}/${total}`))
 
-  // 進捗。位置ではなく「手順の何番目か」だけを示す
-  const prog = el('div', 'stepprog')
-  prog.appendChild(text('span', 'stepcount', `ステップ ${s.guideIndex + 1} / ${total}`))
-  prog.appendChild(text('span', 'stepkind', stepKindLabel(step.kind)))
-  w.appendChild(prog)
-  const bar = el('div', 'stepbar')
-  const fill = el('div', 'stepfill')
-  fill.style.width = `${Math.round(((s.guideIndex + 1) / total) * 100)}%`
-  bar.appendChild(fill)
-  w.appendChild(bar)
+  // 旅程のどこにいるか（路線図風）。位置の測位ではなく「次へ」の申告に連動
+  w.appendChild(journeyStrip(step.kind))
 
   // 方向と距離が主役。案内表示を見なくても次の一歩が決まるようにする
   if (step.direction) {
@@ -603,6 +596,40 @@ function button(cls: string, label: string, onClick: () => void): HTMLElement {
   b.appendChild(text('span', '', label))
   b.addEventListener('click', onClick)
   return b
+}
+
+/**
+ * ジャーニーバー（路線図風の現在地表現）。
+ * ホーム→階段→改札→通路→出口の5駅を並べ、いまの局面を光らせる。
+ * ⚠️ 現在地の測位ではない。ユーザーの「次へ」申告に連動しているだけ。
+ */
+function journeyStrip(current: AppState['guideSteps'][number]['kind']): HTMLElement {
+  const stages = [
+    { kind: 'orient', icon: '🚃', label: 'ホーム' },
+    { kind: 'move',   icon: '🪜', label: '階段' },
+    { kind: 'gate',   icon: '🎫', label: '改札' },
+    { kind: 'walk',   icon: '🚶', label: '通路' },
+    { kind: 'exit',   icon: '🌤', label: '出口' },
+  ] as const
+
+  const idx = Math.max(0, stages.findIndex((st) => st.kind === current))
+  const wrap = el('div', 'journey')
+
+  const line = el('div', 'jline')
+  const fill = el('div', 'jlinefill')
+  fill.style.width = `${(idx / (stages.length - 1)) * 100}%`
+  line.appendChild(fill)
+  wrap.appendChild(line)
+
+  stages.forEach((st, i) => {
+    const node = el('div', `jnode ${i < idx ? 'done' : i === idx ? 'now' : ''}`)
+    node.appendChild(text('span', 'jdot', i < idx ? '✓' : st.icon))
+    node.appendChild(text('span', 'jlabel', st.label))
+    if (i === idx) node.appendChild(text('span', 'jhere', 'いまここ'))
+    wrap.appendChild(node)
+  })
+
+  return wrap
 }
 
 /**
