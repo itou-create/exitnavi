@@ -117,10 +117,13 @@ export function buildGuideSteps(
   )
   if (!leg) return []
 
-  // 降車直後の個別化（乗車位置 × 走り去った方向）ができるなら最優先で使う
+  // 降車直後の個別化。
+  // 終着ホームなら「先頭方向へ進めば改札」が常に成立する（最優先・最も確実）。
+  // 通過駅では 乗車位置 × 走り去った方向 × 階段位置 から計算する。
   const travelEnd = travelEndOf(opts.train, origin)
-  const personal =
-    travelEnd && opts.boardedRatio != null && leg.stairsPositionRatio != null
+  const personal = origin.terminal
+    ? terminalOrient(leg, opts.boardedRatio ?? null)
+    : travelEnd && opts.boardedRatio != null && leg.stairsPositionRatio != null
       ? personalizedOrient(origin, leg, travelEnd, opts.boardedRatio)
       : null
 
@@ -236,6 +239,33 @@ export function directionDisplay(d: NonNullable<GuidanceStep['direction']>): { a
     case 'slight-left':  return { arrow: '↖', label: '左ななめ前へ' }
     case 'slight-right': return { arrow: '↗', label: '右ななめ前へ' }
     case 'u-turn':       return { arrow: '↩', label: '折り返す' }
+  }
+}
+
+/**
+ * 終着ホームの降車直後ステップ。
+ * 電車はここで止まるので「走り去った方向」は無いが、
+ * 頭端式なら先頭方向の先に改札がある——観察不要で常に言い切れる。
+ */
+function terminalOrient(
+  leg: { gateName: string },
+  boardedRatio: BoardedRatio | null,
+): GuidanceStep {
+  const howFar =
+    boardedRatio == null
+      ? ''
+      : boardedRatio < 0.34
+        ? '先頭寄りに乗っていたので、すぐに改札です。'
+        : boardedRatio > 0.67
+          ? '後ろ寄りに乗っていたので、ホームをしばらく歩きます。'
+          : 'ホームを半分ほど歩きます。'
+  return {
+    kind: 'orient',
+    direction: 'straight',
+    directionBase: '「電車の先頭方向」が基準です',
+    instruction: '降りたら、電車の先頭方向へ進む',
+    signpostedAs: leg.gateName,
+    detail: `終着駅なので、線路の行き止まり側に改札があります。${howFar}（暫定・要実測）`,
   }
 }
 

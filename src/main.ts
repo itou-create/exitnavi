@@ -275,7 +275,8 @@ const handlers: Handlers = {
     const s = getState()
     const best = s.candidates[0]
     if (!s.station || !s.origin || !best) return
-    if (travelEndOf(s.originTrain, s.origin) != null) {
+    // 走り去る方向が分かる駅、または終着ホーム（先頭方向=改札）なら乗車位置を聞く
+    if (travelEndOf(s.originTrain, s.origin) != null || s.origin.terminal) {
       setState({ screen: 'askBoarded' })
       return
     }

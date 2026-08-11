@@ -65,6 +65,10 @@ export const IKEBUKURO: Station = {
       operator: 'JR東日本',
       line: '湘南新宿ライン',
       odptRailway: 'odpt.Railway:JR-East.ShonanShinjuku',
+      platformEnds: { a: '赤羽・大宮寄り', b: '新宿寄り' }, // TODO: 実測
+      directionEnds: { Omiya: 'a', Takasaki: 'a', Utsunomiya: 'a', Osaki: 'b', Zushi: 'b', Odawara: 'b' },
+      platformType: 'island',
+      // carCount は10両/15両が混在するため未設定（列車情報から出し分け TODO）
       levelIndex: 0,
       color: '#e21f26',
     },
@@ -75,6 +79,8 @@ export const IKEBUKURO: Station = {
       operator: '西武鉄道',
       line: '池袋線',
       odptRailway: 'odpt.Railway:Seibu.Ikebukuro',
+      terminal: true, // 頭端式の終着。先頭方向の先に改札
+      carCount: 10, // TODO: 8両運用あり
       levelIndex: 0,
       color: '#0072bc',
     },
@@ -85,6 +91,8 @@ export const IKEBUKURO: Station = {
       operator: '東武鉄道',
       line: '東上線',
       odptRailway: 'odpt.Railway:Tobu.Tojo',
+      terminal: true, // 頭端式の終着
+      carCount: 10,
       levelIndex: 0,
       color: '#0067c0',
     },
@@ -95,6 +103,8 @@ export const IKEBUKURO: Station = {
       operator: '東京メトロ',
       line: '丸ノ内線',
       odptRailway: 'odpt.Railway:TokyoMetro.Marunouchi',
+      terminal: true, // 丸ノ内線は池袋が終着
+      carCount: 6,
       levelIndex: -2,
       color: '#e60012',
     },
@@ -105,6 +115,10 @@ export const IKEBUKURO: Station = {
       operator: '東京メトロ',
       line: '有楽町線',
       odptRailway: 'odpt.Railway:TokyoMetro.Yurakucho',
+      platformEnds: { a: '要町・和光市寄り', b: '東池袋・新木場寄り' }, // TODO: 実測
+      directionEnds: { Wakoshi: 'a', Shinkiba: 'b' },
+      platformType: 'island',
+      carCount: 10,
       levelIndex: -3,
       color: '#c1a470',
     },
@@ -115,6 +129,10 @@ export const IKEBUKURO: Station = {
       operator: '東京メトロ',
       line: '副都心線',
       odptRailway: 'odpt.Railway:TokyoMetro.Fukutoshin',
+      platformEnds: { a: '要町・和光市寄り', b: '雑司が谷・渋谷寄り' }, // TODO: 実測
+      directionEnds: { Wakoshi: 'a', Shibuya: 'b' },
+      platformType: 'island',
+      carCount: 10, // TODO: 8両運用あり
       levelIndex: -4,
       color: '#9b7cb6',
     },
@@ -546,6 +564,8 @@ export const FUNABASHI: Station = {
       operator: '東武鉄道',
       line: 'アーバンパークライン（野田線）',
       odptRailway: 'odpt.Railway:Tobu.Noda', // TODO: ODPT上の正式な路線IDを確認
+      terminal: true, // 船橋はアーバンパークラインの終着
+      carCount: 5, // TODO: 6両運用の有無を確認
       levelIndex: 1,
       color: '#00a7db',
     },
