@@ -40,6 +40,7 @@ export const IKEBUKURO: Station = {
       // 行先 → 走り去る側の端。「電車が走り去った方向へ」案内の材料
       directionEnds: { Omiya: 'a', Kawagoe: 'a', Osaki: 'b', Shinjuku: 'b', Ebisu: 'b' },
       platformType: 'island', // 3・4番線の島式
+      carCount: 10, // 埼京線は10両
       levelIndex: 0,
       color: '#00ac9a',
     },
@@ -53,6 +54,7 @@ export const IKEBUKURO: Station = {
       platformEnds: { a: '大塚・田端寄り', b: '目白・新宿寄り' }, // TODO: 実測
       directionEnds: { Osaki: 'b', Shinjuku: 'b', Tabata: 'a', Ueno: 'a' },
       platformType: 'island',
+      carCount: 11, // 山手線は11両
       levelIndex: 0,
       color: '#9acd32',
     },
@@ -300,6 +302,7 @@ export const SENDAI: Station = {
       trainLocationAvailable: false,
       platformEnds: { a: 'あおば通寄り', b: '榴ケ岡・石巻寄り' }, // TODO: 実測
       platformType: 'island', // 1面2線
+      carCount: 4, // 仙石線は4両
       levelIndex: -2, // 地下2階（Wikipedia 駅構造で確認済み）
       color: '#00aeef',
     },
@@ -314,6 +317,7 @@ export const SENDAI: Station = {
       platformEnds: { a: '泉中央寄り', b: '富沢寄り' }, // TODO: 実測
       directionEnds: { IzumiChuo: 'a', Tomizawa: 'b' },
       platformType: 'island', // 1面2線
+      carCount: 4, // 南北線は4両
       levelIndex: -3, // 地下3階
       color: '#109e49',
     },
@@ -328,6 +332,7 @@ export const SENDAI: Station = {
       platformEnds: { a: '八木山動物公園寄り', b: '荒井寄り' }, // TODO: 実測
       directionEnds: { Arai: 'b', YagiyamaZoologicalPark: 'a' },
       platformType: 'island', // 1面2線
+      carCount: 4, // 東西線は4両
       levelIndex: -4, // 地下4階
       color: '#0072bc',
     },
@@ -425,6 +430,7 @@ export const ROKUCHONOME: Station = {
       platformEnds: { a: '八木山動物公園寄り', b: '荒井寄り' }, // TODO: 実測
       directionEnds: { Arai: 'b', YagiyamaZoologicalPark: 'a' },
       platformType: 'island', // 1面2線
+      carCount: 4, // 東西線は4両
       nodeId: 'rk_home',
       levelIndex: -3, // 地下3階 TODO: 実測
       color: '#0072bc',
@@ -515,6 +521,7 @@ export const FUNABASHI: Station = {
       platformEnds: { a: '東京・横浜寄り', b: '千葉寄り' }, // TODO: 実測
       directionEnds: { Kurihama: 'a', Zushi: 'a', Tokyo: 'a', Chiba: 'b' },
       platformType: 'island',
+      carCount: 11, // 総武快速は基本11両（15両あり TODO: 出し分け）
       levelIndex: 1, // 高架
       color: '#0074be',
     },
@@ -528,6 +535,7 @@ export const FUNABASHI: Station = {
       platformEnds: { a: '中野・新宿寄り', b: '千葉寄り' }, // TODO: 実測
       directionEnds: { Nakano: 'a', Mitaka: 'a', Chiba: 'b', Tsudanuma: 'b' },
       platformType: 'island',
+      carCount: 10, // 中央・総武線各駅停車は10両
       levelIndex: 1,
       color: '#ffd400',
     },

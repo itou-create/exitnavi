@@ -153,6 +153,15 @@ a.btn{text-decoration:none}
 .dirlabel{display:block;font-size:19px;font-weight:900;letter-spacing:-.01em}
 .dirsub{display:block;font-size:10.5px;color:var(--ink3);margin-top:2px}
 
+/* 車両選択（前から何両目） */
+.carstrip{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin:4px 0 14px}
+.carhead{font-size:10px;font-weight:800;color:var(--ink3);flex:none}
+.carbtn{width:42px;height:46px;border-radius:10px;border:1.5px solid var(--line);
+  background:var(--card);color:inherit;font-family:inherit;font-size:15px;font-weight:800;
+  cursor:pointer;transition:.15s}
+.carbtn:hover{border-color:var(--brand);color:var(--brand)}
+.dg-you{fill:var(--warn);stroke:#fff;stroke-width:2.5}
+
 /* 自動判定モード */
 .autoline{display:flex;align-items:center;gap:8px;background:rgba(0,180,120,.09);
   border:1px solid rgba(0,180,120,.3);border-radius:11px;padding:9px 12px;margin:0 0 12px}

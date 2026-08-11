@@ -1,4 +1,4 @@
-import type { ArrivedTrain, BoardedPosition, ConcourseLeg, ExitCandidate, GuidanceStep, Platform, Station } from '../types'
+import type { ArrivedTrain, BoardedRatio, ConcourseLeg, ExitCandidate, GuidanceStep, Platform, Station } from '../types'
 import { fmtMin } from './exitPicker'
 import { findPath, stepsFromPath } from './pathfinder'
 
@@ -25,8 +25,8 @@ import { findPath, stepsFromPath } from './pathfinder'
 export interface GuideOptions {
   /** 起点が推定由来のときの列車。走り去った方向の計算に使う */
   train?: ArrivedTrain | null
-  /** 乗車位置（進行方向基準）。ユーザーの1タップ申告 */
-  boardedPosition?: BoardedPosition | null
+  /** 乗車位置（進行方向基準の比率、0=先頭）。ユーザーの1タップ申告 */
+  boardedRatio?: BoardedRatio | null
 }
 
 /**
@@ -39,36 +39,23 @@ export function travelEndOf(train: ArrivedTrain | null | undefined, platform: Pl
   return platform.directionEnds[last] ?? null
 }
 
-/** 降車直後の個別化案内が可能か（askBoarded 画面を出すかの判定） */
-export function canPersonalizeOrient(
-  station: Station,
-  origin: Platform,
-  candidate: ExitCandidate | undefined,
-  train: ArrivedTrain | null | undefined,
-): boolean {
-  if (!candidate) return false
-  const leg = station.legs.find((l) => l.platformId === origin.id && l.exitId === candidate.exit.id)
-  return !!leg && leg.stairsPositionRatio != null && travelEndOf(train, origin) != null
-}
-
 /**
  * 降車直後の一歩目を、利用者が観察できる言葉で作る。
  *
- * 利用者が確実に知っているのは「自分が電車のどのあたりに乗っていたか」、
+ * 利用者が確実に知っているのは「自分が電車の前から何両目に乗っていたか」、
  * 観察できるのは「電車がどっちへ走り去ったか」だけ。この2つと
- * 階段のホーム上の位置から、「走り去った方向へ／と逆へ」を言い切る。
+ * 階段のホーム上の位置から、「電車を背にして右／左」を言い切る。
  * 現在地の測位はしない。
  */
 function personalizedOrient(
   origin: Platform,
   leg: { stairsPositionRatio?: number; gateName: string },
   travelEnd: 'a' | 'b',
-  boarded: BoardedPosition,
+  boardedRatio: BoardedRatio,
 ): GuidanceStep {
   const stairs = leg.stairsPositionRatio ?? 0.5
   // 進行方向の先頭は「走り去る側の端」に近い
-  const offsets: Record<BoardedPosition, number> = { front: 0.15, middle: 0.5, rear: 0.85 }
-  const userRatio = travelEnd === 'a' ? offsets[boarded] : 1 - offsets[boarded]
+  const userRatio = travelEnd === 'a' ? boardedRatio : 1 - boardedRatio
 
   const delta = stairs - userRatio
   const dist = Math.abs(delta)
@@ -133,8 +120,8 @@ export function buildGuideSteps(
   // 降車直後の個別化（乗車位置 × 走り去った方向）ができるなら最優先で使う
   const travelEnd = travelEndOf(opts.train, origin)
   const personal =
-    travelEnd && opts.boardedPosition && leg.stairsPositionRatio != null
-      ? personalizedOrient(origin, leg, travelEnd, opts.boardedPosition)
+    travelEnd && opts.boardedRatio != null && leg.stairsPositionRatio != null
+      ? personalizedOrient(origin, leg, travelEnd, opts.boardedRatio)
       : null
 
   // 手書きステップがあれば最優先（個別化できた場合は orient だけ差し替える）

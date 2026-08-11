@@ -58,6 +58,8 @@ export interface Platform {
   directionEnds?: Record<string, 'a' | 'b'>
   /** 構内ネットワーク上の対応ノード（pathNodes 整備済みの駅のみ） */
   nodeId?: string
+  /** 編成両数。「前から何両目に乗っていたか」の選択UIに使う */
+  carCount?: number
   /**
    * ホームの形式。降車時にどちら側のドアが開くかが決まる事実データ。
    *   island（島式・線路に挟まれる）= 左側通行なので進行方向の右側ドアが開く
@@ -323,8 +325,12 @@ export type ScreenId =
   | 'guide'         // 改札から出口までのステップ案内（第2段階）
   | 'error'
 
-/** 乗車位置（進行方向基準）。降りた本人が確実に知っている唯一の位置情報 */
-export type BoardedPosition = 'front' | 'middle' | 'rear'
+/**
+ * 乗車位置（進行方向基準の比率。0 = 先頭、1 = 最後尾）。
+ * 「前から◯両目」の選択から (car - 0.5) / 編成両数 で求める。
+ * 降りた本人が確実に知っている唯一の位置情報であり、測位ではなく申告。
+ */
+export type BoardedRatio = number
 
 /** アプリ全体の状態 */
 export interface AppState {
@@ -341,8 +347,8 @@ export interface AppState {
   originSource: OriginSource | null
   /** 起点が推定由来のとき、その列車。走り去った方向の計算に使う */
   originTrain: ArrivedTrain | null
-  /** 乗車位置（進行方向基準）。ユーザーの1タップ申告 */
-  boardedPosition: BoardedPosition | null
+  /** 乗車位置（進行方向基準の比率、0=先頭）。ユーザーの1タップ申告 */
+  boardedPosition: BoardedRatio | null
   destination: Destination | null
   candidates: ExitCandidate[]
   /** ステップ案内（第2段階）。案内中でなければ空配列 */

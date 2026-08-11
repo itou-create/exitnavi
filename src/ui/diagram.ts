@@ -8,12 +8,26 @@ import { arrowHead, label, sv } from './svg'
  *    - ユーザーの現在位置は描かない（測っていないため）
  *    - 未実測の設備位置は「未実測」と明記して描く
  */
-export function platformDiagram(platform: Platform, leg: ConcourseLeg): SVGSVGElement {
+export function platformDiagram(
+  platform: Platform,
+  leg: ConcourseLeg,
+  boardedRatio: number | null = null,
+  travelEnd: 'a' | 'b' | null = null,
+): SVGSVGElement {
   const svg = sv('svg', { viewBox: '0 0 340 150' }, 'diagram')
 
-  // 降りた電車。どの車両にいたかは分からないので、位置は描かない
+  // 降りた電車
   svg.appendChild(sv('rect', { x: 24, y: 14, width: 292, height: 30, rx: 8 }, 'dg-train'))
   svg.appendChild(label(170, 33, '降りた電車', 'dg-label'))
+
+  // 乗車位置（本人の申告。測位ではない）。走り去る方向が分かるときだけ描ける
+  if (boardedRatio != null && travelEnd != null) {
+    // 進行方向の先頭(ratio=0)は走り去る側の端に近い
+    const axisRatio = travelEnd === 'a' ? boardedRatio : 1 - boardedRatio
+    const ux = 24 + 292 * Math.min(Math.max(axisRatio, 0.05), 0.95)
+    svg.appendChild(sv('circle', { cx: ux, cy: 29, r: 8 }, 'dg-you'))
+    svg.appendChild(label(ux, 10, 'あなた（申告位置）', 'dg-small'))
+  }
 
   // ホーム
   svg.appendChild(sv('rect', { x: 24, y: 52, width: 292, height: 36, rx: 5 }, 'dg-plat'))

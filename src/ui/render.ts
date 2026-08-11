@@ -1,10 +1,10 @@
-import type { AppState, BoardedPosition, Destination, ExitCandidate, GuidanceDirection, LatLng, OriginGuess, Platform, Station } from '../types'
+import type { AppState, BoardedRatio, Destination, ExitCandidate, GuidanceDirection, LatLng, OriginGuess, Platform, Station } from '../types'
 import { DESTINATIONS, DESTINATION_RADIUS_METERS } from '../data/stations'
 import { distanceMeters } from '../services/geo'
 import { rankPlatformsForManualPick } from '../services/originGuess'
 import { explain, fmtMin, TIE_THRESHOLD_SECONDS } from '../services/exitPicker'
 import { placesSearchEnabled, searchPlaces } from '../services/places'
-import { directionDisplay } from '../services/guide'
+import { directionDisplay, travelEndOf } from '../services/guide'
 import { platformDiagram } from './diagram'
 import { stationMap } from './map'
 import { floorPlan } from './floorplans'
@@ -31,7 +31,7 @@ export interface Handlers {
   onPickPlatform: (platform: Platform) => void
   onPickDestination: (destination: Destination) => void
   onStartGuide: () => void
-  onPickBoarded: (pos: BoardedPosition | null) => void
+  onPickBoarded: (ratio: BoardedRatio | null) => void
   onToggleAutoGuide: () => void
   onShareMeasurements: () => void
   onGuideStep: (delta: number) => void
@@ -403,29 +403,58 @@ function result(s: AppState, h: Handlers): HTMLElement {
 function askBoarded(s: AppState, h: Handlers): HTMLElement {
   const w = el('div', '')
   w.appendChild(here(s.origin?.name ?? '—', s.originTrain ? '直近の到着列車から案内を組み立てます' : ''))
-  w.appendChild(text('h2', 'ask', 'どのあたりに乗っていましたか？'))
-  w.appendChild(text('p', 'sub', '進行方向に対しての位置です。だいたいで構いません。'))
 
-  const options: Array<{ pos: BoardedPosition | null; icon: string; t1: string; t2: string }> = [
-    { pos: 'front', icon: '🔜', t1: '前のほう', t2: '進行方向の先頭寄り' },
-    { pos: 'middle', icon: '🚃', t1: '真ん中あたり', t2: '' },
-    { pos: 'rear', icon: '🔙', t1: '後ろのほう', t2: '進行方向の最後尾寄り' },
-    { pos: null, icon: '🤷', t1: 'わからない', t2: '乗車位置を使わずに案内します' },
-  ]
+  const carCount = s.origin?.carCount
 
-  const list = el('div', 'list')
-  options.forEach((o) => {
-    const row = el('button', 'drow')
-    row.appendChild(text('span', 'dic', o.icon))
-    const t = el('span', 'ltext')
-    t.appendChild(text('span', 'n1', o.t1))
-    if (o.t2) t.appendChild(text('span', 'n2', o.t2))
-    row.appendChild(t)
-    row.appendChild(text('span', 'arrow', '›'))
-    row.addEventListener('click', () => h.onPickBoarded(o.pos))
-    list.appendChild(row)
-  })
-  w.appendChild(list)
+  if (carCount && carCount >= 2) {
+    // 車両選択（前から何両目）。号車番号ではなく進行方向基準なので迷わない
+    w.appendChild(text('h2', 'ask', '前から何両目に乗っていましたか？'))
+    w.appendChild(text('p', 'sub', `進行方向の先頭を1両目と数えます（${carCount}両編成）。だいたいで構いません。`))
+
+    const strip = el('div', 'carstrip')
+    strip.appendChild(text('span', 'carhead', '← 先頭'))
+    for (let car = 1; car <= carCount; car++) {
+      const b = el('button', 'carbtn')
+      b.textContent = String(car)
+      b.addEventListener('click', () => h.onPickBoarded((car - 0.5) / carCount))
+      strip.appendChild(b)
+    }
+    strip.appendChild(text('span', 'carhead', '最後尾'))
+    w.appendChild(strip)
+  } else {
+    w.appendChild(text('h2', 'ask', 'どのあたりに乗っていましたか？'))
+    w.appendChild(text('p', 'sub', '進行方向に対しての位置です。だいたいで構いません。'))
+    const rough: Array<{ ratio: BoardedRatio; icon: string; t1: string; t2: string }> = [
+      { ratio: 0.15, icon: '🔜', t1: '前のほう', t2: '進行方向の先頭寄り' },
+      { ratio: 0.5, icon: '🚃', t1: '真ん中あたり', t2: '' },
+      { ratio: 0.85, icon: '🔙', t1: '後ろのほう', t2: '進行方向の最後尾寄り' },
+    ]
+    const list = el('div', 'list')
+    rough.forEach((o) => {
+      const row = el('button', 'drow')
+      row.appendChild(text('span', 'dic', o.icon))
+      const t = el('span', 'ltext')
+      t.appendChild(text('span', 'n1', o.t1))
+      if (o.t2) t.appendChild(text('span', 'n2', o.t2))
+      row.appendChild(t)
+      row.appendChild(text('span', 'arrow', '›'))
+      row.addEventListener('click', () => h.onPickBoarded(o.ratio))
+      list.appendChild(row)
+    })
+    w.appendChild(list)
+  }
+
+  const skip = el('button', 'drow')
+  skip.appendChild(text('span', 'dic', '🤷'))
+  const st = el('span', 'ltext')
+  st.appendChild(text('span', 'n1', 'わからない'))
+  st.appendChild(text('span', 'n2', '乗車位置を使わずに案内します'))
+  skip.appendChild(st)
+  skip.appendChild(text('span', 'arrow', '›'))
+  skip.addEventListener('click', () => h.onPickBoarded(null))
+  skip.style.marginTop = '10px'
+  w.appendChild(skip)
+
   return w
 }
 
@@ -505,8 +534,12 @@ function guide(s: AppState, h: Handlers): HTMLElement {
       : undefined
   if (step.kind === 'orient' || step.kind === 'move') {
     if (s.origin && leg) {
-      w.appendChild(platformDiagram(s.origin, leg))
-      w.appendChild(text('p', 'dgcap', 'ホームの模式図です。縮尺はありません。あなたの現在位置は測っていないため描いていません。'))
+      const tEnd = travelEndOf(s.originTrain, s.origin)
+      w.appendChild(platformDiagram(s.origin, leg, s.boardedPosition, tEnd))
+      w.appendChild(text('p', 'dgcap',
+        s.boardedPosition != null && tEnd != null
+          ? 'ホームの模式図です。「あなた」は申告いただいた乗車位置で、測位ではありません。'
+          : 'ホームの模式図です。縮尺はありません。あなたの現在位置は測っていないため描いていません。'))
     }
   } else if (s.station && best) {
     // 改札〜構内は立体図（あれば）で現在の区間を強調、地上に出るステップは実地図

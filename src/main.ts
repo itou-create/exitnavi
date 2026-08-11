@@ -1,11 +1,11 @@
 import './styles.css'
-import type { BoardedPosition, Destination, OriginGuess, Platform, Station } from './types'
+import type { BoardedRatio, Destination, OriginGuess, Platform, Station } from './types'
 import { getState, resetState, setState, subscribe } from './state'
 import { render, type Handlers } from './ui/render'
 import { getCurrentFix, isOutdoor, nearestStations } from './services/geo'
 import { guessOrigin, isGuessUsable } from './services/originGuess'
 import { rankExits } from './services/exitPicker'
-import { buildGuideSteps, canPersonalizeOrient } from './services/guide'
+import { buildGuideSteps, travelEndOf } from './services/guide'
 import { IKEBUKURO, STATIONS } from './data/stations'
 import { setDemoMode, usingMock } from './services/odpt'
 import { stopCompass } from './services/compass'
@@ -271,18 +271,18 @@ const handlers: Handlers = {
   },
   onStartGuide() {
     // 最上位候補の出口への案内を開始する。
-    // 降車直後の個別化（乗車位置×走り去った方向）ができるなら、まず乗車位置を聞く
+    // 走り去る方向が分かる（＝乗車位置を活かせる）なら、まず乗車位置を聞く
     const s = getState()
     const best = s.candidates[0]
     if (!s.station || !s.origin || !best) return
-    if (canPersonalizeOrient(s.station, s.origin, best, s.originTrain)) {
+    if (travelEndOf(s.originTrain, s.origin) != null) {
       setState({ screen: 'askBoarded' })
       return
     }
     startGuideWith(null)
   },
-  onPickBoarded(pos: BoardedPosition | null) {
-    startGuideWith(pos)
+  onPickBoarded(ratio: BoardedRatio | null) {
+    startGuideWith(ratio)
   },
   onGuideStep(delta: number) {
     stopAllSensors()
@@ -408,18 +408,18 @@ async function start(): Promise<void> {
 }
 
 /** 乗車位置（null = わからない）を受けてステップ案内を開始する */
-function startGuideWith(pos: BoardedPosition | null): void {
+function startGuideWith(ratio: BoardedRatio | null): void {
   const s = getState()
   const best = s.candidates[0]
   if (!s.station || !s.origin || !best) return
   const guideSteps = buildGuideSteps(s.station, s.origin, best, {
     train: s.originTrain,
-    boardedPosition: pos,
+    boardedRatio: ratio,
   })
   // 実測レコーダーを起動（案内どおり歩くこと自体が計測になる）
   telemetry.beginRoute(s.station.id, s.origin.id, best.exit.id, guideSteps[0] ?? null)
   setState({
-    boardedPosition: pos,
+    boardedPosition: ratio,
     guideSteps,
     guideIndex: 0,
     guideArrivalNote: null,
